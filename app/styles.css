@@ -642,6 +642,7 @@ textarea:focus-visible,
 .drawer-footer p span { color: var(--muted); font-size: 9px; }
 
 .audit-empty { display: grid; justify-items: center; padding: 50px 20px; color: var(--muted); text-align: center; }
+.audit-empty[hidden] { display: none !important; }
 .audit-empty > span { width: 46px; height: 46px; display: grid; place-items: center; margin-bottom: 10px; border: 1px solid var(--line-strong); border-radius: 50%; font: 500 20px/1 var(--font-mono); }
 .audit-empty strong { color: var(--ink); font-size: 12px; }
 .audit-empty p { margin: 4px 0 0; font-size: 10px; }

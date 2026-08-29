@@ -259,6 +259,10 @@ async function testTenSecureFlows(browser, origin) {
       }
       assert.equal(audit.audit[1].approvalDigest, applied.pending.approvalDigest);
       assert.equal(audit.audit[2].resultingStateDigest, appliedDigest);
+      await harness.page.locator('[data-open-drawer="audit"]').first().click();
+      assert.equal(await harness.page.locator("#audit-empty").isVisible(), false);
+      assert.equal(await harness.page.locator("#audit-timeline .audit-event").count(), 3);
+      await harness.page.locator("#audit-drawer [data-close-drawer]").click();
       const handoff = await callTool(harness.page, "closeout_preview_handoff_package");
       assert.equal(handoff.package.status, "not_ready_to_issue");
       assert.equal(handoff.package.readyCount, 10);
@@ -268,6 +272,9 @@ async function testTenSecureFlows(browser, origin) {
       assert.equal(acceptedFire.acceptance.evidenceId, "ev-fire-photo");
       assert.deepEqual(acceptedFire.evidenceIds, ["ev-fire-photo"]);
       assert.deepEqual(acceptedFire.evidenceChainIds, ["ev-fire-photo", "ev-fire-report", "ev-fire-plan"]);
+      await harness.page.locator('[data-open-drawer="handoff"]').first().click();
+      assert.equal((await harness.page.locator("#package-footer-copy").textContent()).trim(), "Resolve or explicitly carry all 4 exceptions before issue.");
+      await harness.page.locator("#handoff-drawer [data-close-drawer]").click();
 
       let reset;
       if (flow === 1) {

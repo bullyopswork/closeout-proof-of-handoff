@@ -63,7 +63,7 @@
     "decision-helper", "accept-decision", "reject-decision", "defer-decision", "reopen-decision", "owner-initials",
     "owner-name", "due-date", "tool-registration", "tool-registration-copy", "audit-count", "drawer-backdrop",
     "handoff-drawer", "audit-drawer", "package-ready-count", "package-exception-count", "package-state",
-    "drawer-exception-count", "drawer-ready-count", "exception-package", "accepted-package", "audit-empty",
+    "drawer-exception-count", "drawer-ready-count", "exception-package", "accepted-package", "package-footer-copy", "audit-empty",
     "audit-timeline", "dialog-backdrop", "decision-dialog", "dialog-eyebrow", "dialog-heading", "dialog-copy",
     "decision-note", "decision-note-error", "dialog-cancel", "dialog-confirm", "toast-region", "zoom-toggle",
     "plan-template", "workflow-stage-label", "workflow-stage-copy", "workflow-human-label", "workflow-human-copy", "approval-boundary",
@@ -601,6 +601,9 @@
     refs["package-state"].textContent = pkg.exceptionCount ? "Not ready to issue" : "Ready to issue";
     refs["drawer-exception-count"].textContent = pkg.exceptionCount;
     refs["drawer-ready-count"].textContent = pkg.readyCount;
+    refs["package-footer-copy"].textContent = pkg.exceptionCount === 0
+      ? "All exceptions are resolved. The package is ready to issue."
+      : `Resolve or explicitly carry ${pkg.exceptionCount === 1 ? "the remaining exception" : `all ${pkg.exceptionCount} exceptions`} before issue.`;
     refs["exception-package"].replaceChildren();
     refs["accepted-package"].replaceChildren();
 
