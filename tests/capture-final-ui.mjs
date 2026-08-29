@@ -130,9 +130,11 @@ try {
 
   const mobile = await newPage(browser, origin, MOBILE_VIEWPORT);
   await mobile.page.screenshot({ path: join(OUTPUT_DIR, "mobile-evidence-390x844.png"), fullPage: false });
-  await mobile.page.locator('[data-mobile-panel="requirements"]').first().click();
+  await mobile.page.locator('.mobile-workspace-nav [data-mobile-panel="requirements"]').click();
+  await mobile.page.waitForTimeout(250);
   await mobile.page.screenshot({ path: join(OUTPUT_DIR, "mobile-requirements-390x844.png"), fullPage: false });
-  await mobile.page.locator('[data-mobile-panel="decision"]').first().click();
+  await mobile.page.locator('.mobile-workspace-nav [data-mobile-panel="decision"]').click();
+  await mobile.page.waitForTimeout(250);
   await mobile.page.screenshot({ path: join(OUTPUT_DIR, "mobile-decision-390x844.png"), fullPage: false });
   const mobileMetrics = await metrics(mobile.page, mobile.errors);
   await mobile.context.close();
