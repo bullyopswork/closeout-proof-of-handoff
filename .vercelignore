@@ -1,0 +1,11 @@
+.git/
+.DS_Store
+.vercel/
+artifacts/
+controls/
+tests/
+CONTEXT_SUMMARY.md
+PLAN.md
+STATUS.md
+state.json
+npm-debug.log*

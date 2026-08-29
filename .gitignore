@@ -1,0 +1,14 @@
+node_modules/
+.DS_Store
+
+# Internal validation controls and proof captures are kept outside the public entry.
+artifacts/
+controls/
+CONTEXT_SUMMARY.md
+PLAN.md
+STATUS.md
+state.json
+
+# Local hosting and deployment state.
+.vercel/
+npm-debug.log*

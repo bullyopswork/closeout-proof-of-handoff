@@ -1,0 +1,18 @@
+{
+  "name": "closeout-proof-of-handoff",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A WebMCP construction closeout demo where an agent stages one of two eligible evidence reviews and a person makes the visible decision.",
+  "type": "module",
+  "scripts": {
+    "serve": "python3 -m http.server 4173",
+    "test": "node tests/run-production-regression.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "playwright": "^1.58.2"
+  },
+  "license": "MIT"
+}
