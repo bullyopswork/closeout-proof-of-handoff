@@ -66,7 +66,9 @@
     "drawer-exception-count", "drawer-ready-count", "exception-package", "accepted-package", "audit-empty",
     "audit-timeline", "dialog-backdrop", "decision-dialog", "dialog-eyebrow", "dialog-heading", "dialog-copy",
     "decision-note", "decision-note-error", "dialog-cancel", "dialog-confirm", "toast-region", "zoom-toggle",
-    "plan-template"
+    "plan-template", "workflow-stage-label", "workflow-stage-copy", "workflow-human-label", "workflow-human-copy",
+    "workflow-applied-copy", "match-location", "match-identity-label", "match-identity-copy", "match-revision",
+    "match-verdict", "match-verdict-copy"
   ].map((id) => [id, document.getElementById(id)]));
 
   refs["app-shell"] = document.querySelector(".app-shell");
@@ -214,10 +216,11 @@
     const readyItems = visible.filter((item) => item.status === "ready");
     refs["requirement-list"].replaceChildren();
 
-    function appendGroup(label, items) {
+    function appendGroup(label, items, shownSubset = false) {
       if (!items.length) return;
       const groupLabel = createElement("div", "requirement-group-label");
-      groupLabel.append(createElement("span", "", label), createElement("span", "", items.length));
+      groupLabel.dataset.overflowGroup = label.startsWith("More ") ? "true" : "false";
+      groupLabel.append(createElement("span", "", label), createElement("span", "", shownSubset ? `${items.length} shown` : items.length));
       refs["requirement-list"].append(groupLabel);
       items.forEach((requirement) => {
         const row = createElement("button", "requirement-row");
@@ -236,22 +239,29 @@
       });
     }
 
-    appendGroup("Needs action", exceptionItems);
-    appendGroup("Ready", readyItems);
+    if (filter === "all") {
+      appendGroup("Needs action", exceptionItems.slice(0, 3), true);
+      appendGroup("Ready", readyItems.slice(0, 2), true);
+      if (exceptionItems.length > 3 || readyItems.length > 2) refs["requirement-list"].append(createElement("div", "requirement-overflow-spacer"));
+      appendGroup("More open items", exceptionItems.slice(3));
+      appendGroup("More ready items", readyItems.slice(2));
+    } else {
+      appendGroup(filter === "exceptions" ? "Needs action" : "Ready", visible);
+    }
     refs["filter-empty"].hidden = visible.length !== 0;
   }
 
   function renderEvidenceTabs(requirement) {
     const list = evidenceFor(requirement);
     refs["evidence-tabs"].replaceChildren();
-    refs["evidence-count"].textContent = `${list.length} ${list.length === 1 ? "record" : "records"}`;
+    refs["evidence-count"].textContent = `${list.length + 1} linked checks`;
     if (!list.length) {
       const empty = createElement("div", "evidence-tab is-empty");
       empty.append(createElement("span", "evidence-tab-icon", "—"), createElement("span", "", "No evidence attached"));
       refs["evidence-tabs"].append(empty);
       return;
     }
-    list.forEach((evidence) => {
+    list.forEach((evidence, index) => {
       const button = createElement("button", "evidence-tab");
       button.type = "button";
       button.id = `evidence-tab-${evidence.id}`;
@@ -260,10 +270,31 @@
       button.setAttribute("aria-selected", evidence.id === state.selectedEvidenceId ? "true" : "false");
       button.tabIndex = evidence.id === state.selectedEvidenceId ? 0 : -1;
       button.classList.toggle("is-active", evidence.id === state.selectedEvidenceId);
+      button.dataset.evidenceKind = evidence.type;
+      const step = createElement("span", "evidence-step", index + 1);
+      step.setAttribute("aria-hidden", "true");
       const icon = createElement("span", "evidence-tab-icon", evidence.type === "photo" ? "IMG" : evidence.type === "plan" ? "PLN" : "PDF");
+      if (evidence.type === "photo" && evidence.path) {
+        icon.replaceChildren();
+        const thumbnail = document.createElement("img");
+        thumbnail.src = evidence.path;
+        thumbnail.alt = "";
+        icon.append(thumbnail);
+      } else if (evidence.type === "plan") {
+        icon.replaceChildren();
+        const plan = refs["plan-template"].content.cloneNode(true);
+        plan.querySelector(".plan-sheet").dataset.requirement = requirement.id;
+        icon.append(plan);
+      } else if (evidence.type === "document") {
+        icon.replaceChildren(createDocumentPreview(requirement, evidence));
+      }
       const copy = createElement("span", "");
-      copy.append(createElement("strong", "", evidence.label), createElement("small", "", `${evidence.revision} · ${evidence.verdict}`));
-      button.append(icon, copy);
+      copy.append(
+        createElement("strong", "", evidence.label),
+        createElement("small", "", `${evidence.revision} · ${evidence.verdict}`),
+        createElement("em", "", evidence.source)
+      );
+      button.append(step, icon, copy);
       button.addEventListener("click", () => {
         state.selectedEvidenceId = evidence.id;
         renderSelected();
@@ -383,6 +414,55 @@
     });
   }
 
+  function renderMatchFacts(requirement) {
+    const evidence = selectedEvidence(requirement);
+    const checks = checkStateFor(requirement);
+    const locationParts = requirement.location.split(" · ");
+    refs["match-location"].textContent = locationParts[0] || requirement.location;
+    refs["match-identity-label"].textContent = requirement.id === "fire-test" ? "FD-204" : requirement.currentRevision;
+    refs["match-identity-copy"].textContent = requirement.label;
+    refs["match-revision"].textContent = requirement.currentRevision;
+    refs["match-verdict"].textContent = evidence ? evidence.verdict : displayStatus(requirement.status);
+    refs["match-verdict-copy"].textContent = checks.every(Boolean)
+      ? "All criteria satisfied"
+      : requirement.status === "ready"
+        ? "Accepted proof on record"
+        : "Human review still required";
+  }
+
+  function renderWorkflow() {
+    const requirement = selectedRequirement();
+    const pending = state.pending && state.pending.requirementId === requirement.id ? state.pending : null;
+    const steps = Object.fromEntries(Array.from(document.querySelectorAll("[data-workflow-step]"), (step) => [step.dataset.workflowStep, step]));
+    Object.values(steps).forEach((step) => step.classList.remove("is-current", "is-complete"));
+    steps.evidence.classList.add("is-complete");
+
+    refs["workflow-stage-label"].textContent = pending ? "Agent staged" : requirement.status === "ready" ? "Agent applied" : "Ready to stage";
+    refs["workflow-stage-copy"].textContent = pending ? "Exact payload bound" : requirement.status === "ready" ? "Exact match consumed" : mutationPolicyFor(requirement.id) ? "Exact match ready" : "Review recovery path";
+    refs["workflow-human-label"].textContent = pending && pending.status === "approved" ? "Human approved" : pending && pending.status === "consumed" ? "Human approved" : "Human approves";
+    refs["workflow-human-copy"].textContent = pending && pending.status === "awaiting_human" ? "Decision pending" : pending && pending.status === "approved" ? "Agent apply required" : pending && pending.status === "consumed" ? "Decision recorded" : "Required";
+    refs["workflow-applied-copy"].textContent = pending && pending.status === "consumed" ? "Audit recorded" : "Handoff record pending";
+
+    if (pending && pending.status === "consumed") {
+      steps.stage.classList.add("is-complete");
+      steps.human.classList.add("is-complete");
+      steps.applied.classList.add("is-complete", "is-current");
+      return;
+    }
+    if (pending && pending.status === "approved") {
+      steps.stage.classList.add("is-complete");
+      steps.human.classList.add("is-complete");
+      steps.applied.classList.add("is-current");
+      return;
+    }
+    if (pending && pending.status === "awaiting_human") {
+      steps.stage.classList.add("is-complete");
+      steps.human.classList.add("is-current");
+      return;
+    }
+    steps.stage.classList.add("is-current");
+  }
+
   function renderDecision(requirement) {
     const lane = data.lanes[requirement.lane];
     refs["scope-lane"].textContent = lane.label;
@@ -411,12 +491,14 @@
     refs["stage-proposal"].disabled = !canStage;
     refs["stage-proposal"].textContent = canStage ? mutationPolicy.stageLabel : pending ? "Proposal already staged" : blockedStageCopy;
     refs["accept-decision"].disabled = true;
+    refs["accept-decision"].textContent = "Accept evidence";
     refs["reject-decision"].disabled = true;
     refs["defer-decision"].disabled = true;
     refs["reopen-decision"].hidden = true;
 
     if (requirement.status === "ready" && (!pending || pending.status === "consumed")) {
       refs["decision-state"].textContent = "Accepted and applied";
+      refs["accept-decision"].textContent = "Accepted";
       refs["decision-helper"].textContent = "The accepted evidence is included in the handoff package. Reopen only if the source or criterion changes.";
       if (pending && pending.status === "consumed") refs["reopen-decision"].hidden = false;
       return;
@@ -448,6 +530,8 @@
       refs["reject-decision"].disabled = false;
       refs["defer-decision"].disabled = false;
     }
+    if (pending.status === "approved") refs["accept-decision"].textContent = "Approved";
+    if (pending.status === "consumed") refs["accept-decision"].textContent = "Accepted";
     if (["rejected", "deferred", "consumed"].includes(pending.status)) refs["reopen-decision"].hidden = false;
   }
 
@@ -466,7 +550,9 @@
     refs["current-revision"].textContent = requirement.currentRevision;
     renderEvidenceTabs(requirement);
     renderEvidence(requirement);
+    renderMatchFacts(requirement);
     renderDecision(requirement);
+    renderWorkflow();
   }
 
   function handoffPackage() {
@@ -1012,14 +1098,18 @@
     if (returnFocus && lastFocus && typeof lastFocus.focus === "function") lastFocus.focus();
   }
 
-  const filterButtons = Array.from(document.querySelectorAll("[data-filter]"));
+  const filterButtons = ["filter-all", "filter-exceptions", "filter-ready"].map((id) => document.getElementById(id));
   function activateFilter(button, moveFocus = false) {
     state.filter = button.dataset.filter;
     filterButtons.forEach((item) => {
       const selected = item === button;
       item.classList.toggle("is-active", selected);
-      item.setAttribute("aria-selected", selected ? "true" : "false");
-      item.tabIndex = selected ? 0 : -1;
+      if (item.getAttribute("role") === "tab") {
+        item.setAttribute("aria-selected", selected ? "true" : "false");
+        item.tabIndex = selected ? 0 : -1;
+      } else {
+        item.setAttribute("aria-pressed", selected ? "true" : "false");
+      }
     });
     refs["requirement-list"].setAttribute("aria-labelledby", button.id);
     renderRequirements();

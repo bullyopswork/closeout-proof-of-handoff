@@ -28,7 +28,7 @@
         <span class="sync-proof"><span class="sync-dot" aria-hidden="true"></span><span><strong>Local demo saved</strong><small id="last-verified">Verified just now</small></span></span>
         <button class="button button-quiet icon-label" type="button" data-open-drawer="audit">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M4 12h16M4 19h10"/></svg>
-          Audit
+          Audit log
         </button>
         <button class="button button-ink" type="button" data-open-drawer="handoff">
           Preview handoff
@@ -36,6 +36,27 @@
         </button>
       </div>
     </header>
+
+    <section class="workflow-stepper" aria-label="Proof of handoff workflow">
+      <ol>
+        <li class="workflow-step is-complete" data-workflow-step="evidence">
+          <span class="workflow-number" aria-hidden="true">1</span>
+          <span><strong>Evidence found</strong><small>Field verification</small></span>
+        </li>
+        <li class="workflow-step is-current" data-workflow-step="stage">
+          <span class="workflow-number" aria-hidden="true">2</span>
+          <span><strong id="workflow-stage-label">Ready to stage</strong><small id="workflow-stage-copy">Exact match ready</small></span>
+        </li>
+        <li class="workflow-step is-human" data-workflow-step="human">
+          <span class="workflow-number" aria-hidden="true">3</span>
+          <span><strong id="workflow-human-label">Human approves</strong><small id="workflow-human-copy">Required</small></span>
+        </li>
+        <li class="workflow-step" data-workflow-step="applied">
+          <span class="workflow-number" aria-hidden="true">4</span>
+          <span><strong>Applied + audited</strong><small id="workflow-applied-copy">Handoff recorded</small></span>
+        </li>
+      </ol>
+    </section>
 
     <nav class="mobile-workspace-nav" aria-label="Workspace panels">
       <button type="button" data-mobile-panel="requirements" aria-pressed="false">Requirements <span id="mobile-exception-count">5</span></button>
@@ -47,8 +68,8 @@
       <aside class="requirements-rail" data-panel="requirements" aria-labelledby="requirements-heading">
         <div class="rail-summary">
           <div>
-            <p class="eyebrow">Handoff readiness</p>
-            <h1 id="requirements-heading"><span id="ready-count">9</span><small>/14 ready</small></h1>
+            <p class="eyebrow" id="requirements-heading">Issue navigator</p>
+            <p class="rail-readiness"><strong id="ready-count">9</strong>/14 ready</p>
           </div>
           <span class="handoff-state" id="handoff-state">Blocked</span>
         </div>
@@ -59,13 +80,13 @@
           <span>Target <strong id="handoff-target">31 Aug 2026</strong></span>
           <span><strong id="exception-count">5</strong> open exceptions</span>
         </div>
-        <div class="filter-tabs" role="tablist" aria-label="Requirement filters">
-          <button class="is-active" id="filter-all" type="button" role="tab" aria-selected="true" aria-controls="requirement-list" data-filter="all">All <span>14</span></button>
-          <button id="filter-exceptions" type="button" role="tab" aria-selected="false" aria-controls="requirement-list" tabindex="-1" data-filter="exceptions">Exceptions <span id="filter-exception-count">5</span></button>
+        <div class="filter-tabs" role="tablist" aria-label="Requirement filters" aria-owns="filter-all">
+          <button id="filter-exceptions" type="button" role="tab" aria-selected="false" aria-controls="requirement-list" tabindex="-1" data-filter="exceptions">Open <span id="filter-exception-count">5</span></button>
           <button id="filter-ready" type="button" role="tab" aria-selected="false" aria-controls="requirement-list" tabindex="-1" data-filter="ready">Ready <span id="filter-ready-count">9</span></button>
         </div>
         <div class="requirement-list" id="requirement-list" role="tabpanel" aria-labelledby="filter-all" tabindex="0" aria-live="polite"></div>
         <p class="filter-empty" id="filter-empty" hidden>No requirements match this view. Choose another filter.</p>
+        <button class="view-all-issues is-active" id="filter-all" type="button" role="tab" aria-selected="true" aria-controls="requirement-list" data-filter="all">View all issues</button>
       </aside>
 
       <main class="evidence-workspace" data-panel="evidence" aria-labelledby="evidence-heading">
@@ -106,22 +127,33 @@
           </div>
         </section>
 
+        <section class="match-strip" aria-labelledby="match-heading">
+          <h3 id="match-heading">Why this matches</h3>
+          <div class="match-facts">
+            <div><span class="match-marker" aria-hidden="true">LOC</span><span><strong>Location</strong><small id="match-location">Corridor ceiling</small></span></div>
+            <div><span class="match-marker" aria-hidden="true">ID</span><span><strong id="match-identity-label">FD-204</strong><small id="match-identity-copy">Fire damper</small></span></div>
+            <div><span class="match-marker" aria-hidden="true">REV</span><span><strong id="match-revision">Rev 2</strong><small>Current approved revision</small></span></div>
+            <div><span class="match-marker is-positive" aria-hidden="true">OK</span><span><strong id="match-verdict">Pass</strong><small id="match-verdict-copy">All criteria satisfied</small></span></div>
+          </div>
+        </section>
+
         <div class="evidence-sequence" aria-label="Evidence sequence">
           <div class="sequence-heading"><span>Evidence chain</span><small id="evidence-count">3 records</small></div>
-          <div class="evidence-tabs" id="evidence-tabs" role="tablist" aria-label="Evidence chain"></div>
-        </div>
-
-        <section class="criterion-strip" aria-labelledby="criterion-heading">
-          <div class="criterion-number" aria-hidden="true">A</div>
-          <div>
-            <p class="eyebrow" id="criterion-heading">Acceptance criterion</p>
-            <p id="criterion-text">A passing functional test must identify damper FD-204, match the installed location, and be the current approved revision.</p>
+          <div class="evidence-chain-grid">
+            <div class="evidence-tabs" id="evidence-tabs" role="tablist" aria-label="Evidence chain"></div>
+            <section class="criterion-strip" aria-labelledby="criterion-heading">
+              <div class="criterion-number" aria-hidden="true">4</div>
+              <div>
+                <p class="eyebrow" id="criterion-heading">Acceptance criterion</p>
+                <p id="criterion-text">A passing functional test must identify damper FD-204, match the installed location, and be the current approved revision.</p>
+              </div>
+              <dl class="criterion-meta">
+                <div><dt>Required</dt><dd id="required-revision">Rev 2</dd></div>
+                <div><dt>On record</dt><dd id="current-revision">Rev 2</dd></div>
+              </dl>
+            </section>
           </div>
-          <dl class="criterion-meta">
-            <div><dt>Required</dt><dd id="required-revision">Rev 2</dd></div>
-            <div><dt>On record</dt><dd id="current-revision">Rev 2</dd></div>
-          </dl>
-        </section>
+        </div>
       </main>
 
       <aside class="decision-desk" data-panel="decision" aria-labelledby="decision-heading">
@@ -139,7 +171,7 @@
 
         <section class="agent-recommendation" aria-labelledby="recommendation-heading">
           <div class="recommendation-heading">
-            <span class="agent-glyph" aria-hidden="true">A</span>
+            <span class="agent-glyph" aria-hidden="true">AI</span>
             <div><p class="eyebrow" id="recommendation-heading">Agent recommendation</p><span id="recommendation-match">Exact rule match</span></div>
           </div>
           <p id="recommendation-text">Match Rev 2 to FD-204. The location, revision, and passing verdict satisfy the stated criterion.</p>
@@ -148,21 +180,23 @@
             <li data-check="revision"><span aria-hidden="true">✓</span> Current required revision</li>
             <li data-check="verdict"><span aria-hidden="true">✓</span> Functional verdict passes</li>
           </ul>
+          <p class="criterion-rule"><span aria-hidden="true"></span> Matches acceptance criterion</p>
           <button class="button button-blue full-width" type="button" id="stage-proposal">Stage exact match for review</button>
+          <p class="approval-boundary">Approval remains human-only</p>
         </section>
 
         <section class="human-decision" aria-labelledby="human-decision-heading">
           <div class="section-heading">
             <div>
               <p class="eyebrow" id="human-decision-heading">Human decision</p>
-              <strong id="decision-state" aria-live="polite">No proposal staged</strong>
             </div>
             <span class="human-only">Human only</span>
           </div>
+          <strong id="decision-state" aria-live="polite">No proposal staged</strong>
           <p class="decision-helper" id="decision-helper">Stage the exact evidence match before a person can accept, reject, or defer it.</p>
           <div class="decision-actions">
             <button class="button button-accept" type="button" id="accept-decision" disabled>Accept evidence</button>
-            <button class="button button-secondary" type="button" id="reject-decision" disabled>Reject</button>
+            <button class="button button-secondary" type="button" id="reject-decision" disabled>Request changes</button>
             <button class="button button-secondary" type="button" id="defer-decision" disabled>Defer</button>
           </div>
           <button class="text-action" type="button" id="reopen-decision" hidden>Reopen this decision</button>
