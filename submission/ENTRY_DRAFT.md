@@ -9,7 +9,7 @@ notes only after the corresponding proof gate passes.
 - **Tagline:** The agent reconciles construction evidence; the human decides
   what is accepted before readiness changes.
 - **Live app:** `[PENDING DEPLOYED HTTPS URL]`
-- **Public repository:** `[PENDING PUBLIC REPOSITORY URL]`
+- **Public repository:** `https://github.com/bullyopswork/closeout-proof-of-handoff`
 - **Public demo video:** `[PENDING PUBLIC YOUTUBE URL]`
 - **License:** MIT
 

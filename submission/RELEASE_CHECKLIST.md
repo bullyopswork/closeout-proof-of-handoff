@@ -32,7 +32,7 @@ Devpost submission each remain approval-gated.
 - [ ] Deploy the exact frozen candidate to HTTPS after Ed's approval.
 - [ ] Verify the real URL in a fresh supported ChatGPT desktop session.
 - [ ] Verify the real URL in the required Chrome WebMCP testing surface.
-- [ ] Create and verify the public repository after Ed's approval.
+- [x] Create and verify the public repository after Ed's approval.
 - [ ] Record, edit, and verify a narrated public video ≤2:50.
 - [ ] Replace every placeholder in `ENTRY_DRAFT.md`.
 - [ ] Show Ed the exact app, repository, video, and Devpost destinations.

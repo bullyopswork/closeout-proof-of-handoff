@@ -99,10 +99,10 @@ reject/defer/reopen states, keyboard behavior, and untrusted input.
 
 `vercel.json` stages a static HTTPS deployment with a temporary redirect from
 `/` to `/app/`, security headers, and origin isolation. `.vercelignore` keeps
-internal proof captures, frozen controls, and project-management files out of
-the deployed site. This configuration has been prepared locally only; no
-deployment is claimed until the real HTTPS URL is tested in the supported
-ChatGPT and Chrome WebMCP surfaces.
+internal proof captures, frozen controls, submission drafts, tests, and
+project-management files out of the deployed site. No deployment is claimed
+until the real HTTPS URL is tested in the supported ChatGPT and Chrome WebMCP
+surfaces.
 
 ## Repository layout
 
@@ -125,7 +125,10 @@ advanced the generation, and rejected the stale token with Sources evidence.
 The local automated suite passes ten consecutive complete flows. The real
 deployed-HTTPS compatibility pass remains a release gate.
 
-No repository, deployment, video, or challenge submission has been published.
+The public source repository is
+[`bullyopswork/closeout-proof-of-handoff`](https://github.com/bullyopswork/closeout-proof-of-handoff).
+The HTTPS deployment, video, and challenge submission remain pending their
+separate proof and approval gates.
 
 ## License
 
