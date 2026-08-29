@@ -79,7 +79,7 @@ or GPT-5.6 Terra.
 ## Run the production regression suite
 
 ```text
-npm install
+npm ci
 npx playwright install chromium
 npm test
 ```
@@ -95,14 +95,18 @@ includes registration/output contracts, ten consecutive complete secure
 flows, concurrent reset/apply locking, cross-generation replay rejection,
 reject/defer/reopen states, keyboard behavior, and untrusted input.
 
-## Static deployment candidate
+## Verified HTTPS deployment
 
-`vercel.json` stages a static HTTPS deployment with a temporary redirect from
-`/` to `/app/`, security headers, and origin isolation. `.vercelignore` keeps
+The app is deployed at
+[`https://closeout-proof-of-handoff.vercel.app/`](https://closeout-proof-of-handoff.vercel.app/).
+`vercel.json` defines the redirect from `/` to `/app/`, restrictive response
+headers, cross-origin frame denial, and origin isolation. `.vercelignore` keeps
 internal proof captures, frozen controls, submission drafts, tests, and
-project-management files out of the deployed site. No deployment is claimed
-until the real HTTPS URL is tested in the supported ChatGPT and Chrome WebMCP
-surfaces.
+project-management files out of the deployed site.
+
+This tree adds the frame-denial headers. Canonical header and iframe-refusal
+proof must be repeated after every deployment; the latest verified release
+status is recorded separately from the source package.
 
 ## Repository layout
 
@@ -111,7 +115,7 @@ surfaces.
   their provenance/hash note
 - `tests/` — isolated browser regression suite
 - `submission/` — local submission copy and timed demo script
-- `vercel.json` — static HTTPS deployment candidate
+- `vercel.json` — verified static HTTPS deployment configuration
 
 Internal validation controls, screenshots, and mutable project checkpoints are
 intentionally excluded from the public-repo candidate by `.gitignore`.
@@ -119,16 +123,17 @@ intentionally excluded from the public-repo candidate by `.gitignore`.
 ## Current verification boundary
 
 Production discovery and the bounded read → stage → human approve → apply once
-→ replay reject → audit → handoff flow were proven in ChatGPT desktop build
-7303 with Sources evidence. A fresh live reset restored the exact 9/14 seed,
-advanced the generation, and rejected the stale token with Sources evidence.
-The local automated suite passes ten consecutive complete flows. The real
-deployed-HTTPS compatibility pass remains a release gate.
+→ replay reject → audit → handoff flow were proven on the canonical HTTPS
+origin in ChatGPT desktop build 7303 with Sources evidence. A fresh live reset
+restored the exact 9/14 seed, advanced the generation, and rejected the stale
+token. An isolated Chrome WebMCP lane independently discovered all ten tools
+and invoked both read tools. The locked local dependency graph passes ten
+consecutive complete flows.
 
 The public source repository is
 [`bullyopswork/closeout-proof-of-handoff`](https://github.com/bullyopswork/closeout-proof-of-handoff).
-The HTTPS deployment, video, and challenge submission remain pending their
-separate proof and approval gates.
+The final-fidelity demo is verified locally. Its public YouTube upload and the
+challenge submission remain separate approval gates.
 
 ## License
 

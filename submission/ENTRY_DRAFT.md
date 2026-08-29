@@ -1,14 +1,15 @@
 # Submission draft — Closeout: Proof of Handoff
 
-Status: local draft only. Replace every bracketed field and remove the release
-notes only after the corresponding proof gate passes.
+Status: deployment, repository, written entry, and the verified 2:34 local
+demo are complete. The public-video field and final Devpost action remain
+locked pending separate approval.
 
 ## Project details
 
 - **Name:** Closeout: Proof of Handoff
 - **Tagline:** The agent reconciles construction evidence; the human decides
   what is accepted before readiness changes.
-- **Live app:** `[PENDING DEPLOYED HTTPS URL]`
+- **Live app:** `https://closeout-proof-of-handoff.vercel.app/`
 - **Public repository:** `https://github.com/bullyopswork/closeout-proof-of-handoff`
 - **Public demo video:** `[PENDING PUBLIC YOUTUBE URL]`
 - **License:** MIT
@@ -114,6 +115,16 @@ complete.
   keyboard, and untrusted-input coverage.
 - A polished desktop/mobile evidence workspace that is separate from the
   frozen internal validation prototype.
+- The final-fidelity main branch is deployed to the public Vercel origin with
+  matching runtime assets, restrictive headers, excluded internal paths, and
+  fresh desktop/mobile QA.
+- Public-origin ChatGPT Terra/Sources returned the exact `9/14` seed and all
+  five blockers, then passed the guarded stage → human approval → exact apply
+  → replay rejection → audit → truthful handoff → reset → stale-generation
+  sequence. That first public checkpoint finished at the clean generation-2
+  seed; the later same-generation demo capture reset cleanly to generation 3.
+  Isolated Chrome native WebMCP independently passed read-only discovery and
+  invocation.
 
 ## What we learned
 
@@ -133,8 +144,3 @@ project data so the judge path remains deterministic and safe.
 
 WebMCP / OpenAI Site Tools, HTML, CSS, JavaScript, Web Crypto, Playwright, and
 original synthetic evidence imagery.
-
-## Release notes to remove before submission
-
-- `[PENDING]` Deployed HTTPS ChatGPT and Chrome WebMCP compatibility proof.
-- `[PENDING]` Public repository, public YouTube video, and final Devpost fields.
