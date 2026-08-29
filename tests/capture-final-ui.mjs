@@ -13,7 +13,12 @@ const DESKTOP_VIEWPORT = {
   width: Number.parseInt(process.env.CLOSEOUT_DESKTOP_WIDTH || "1440", 10),
   height: Number.parseInt(process.env.CLOSEOUT_DESKTOP_HEIGHT || "900", 10),
 };
-const MOBILE_VIEWPORT = { width: 390, height: 844 };
+const MOBILE_VIEWPORT = {
+  width: Number.parseInt(process.env.CLOSEOUT_MOBILE_WIDTH || "390", 10),
+  height: Number.parseInt(process.env.CLOSEOUT_MOBILE_HEIGHT || "844", 10),
+};
+const MOBILE_VIEWPORT_TAG = `${MOBILE_VIEWPORT.width}x${MOBILE_VIEWPORT.height}`;
+const MOBILE_WIDTH_TAG = String(MOBILE_VIEWPORT.width);
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const MIME = {
   ".css": "text/css; charset=utf-8",
@@ -129,17 +134,36 @@ try {
   await desktop.context.close();
 
   const mobile = await newPage(browser, origin, MOBILE_VIEWPORT);
-  await mobile.page.screenshot({ path: join(OUTPUT_DIR, "mobile-evidence-390x844.png"), fullPage: false });
+  await mobile.page.screenshot({ path: join(OUTPUT_DIR, `mobile-evidence-${MOBILE_VIEWPORT_TAG}.png`), fullPage: false });
+  await mobile.page.screenshot({ path: join(OUTPUT_DIR, `mobile-evidence-full-${MOBILE_WIDTH_TAG}.png`), fullPage: true });
+  const mobileEvidenceMetrics = await metrics(mobile.page, mobile.errors);
   await mobile.page.locator('.mobile-workspace-nav [data-mobile-panel="requirements"]').click();
   await mobile.page.waitForTimeout(250);
-  await mobile.page.screenshot({ path: join(OUTPUT_DIR, "mobile-requirements-390x844.png"), fullPage: false });
+  await mobile.page.screenshot({ path: join(OUTPUT_DIR, `mobile-requirements-${MOBILE_VIEWPORT_TAG}.png`), fullPage: false });
+  await mobile.page.screenshot({ path: join(OUTPUT_DIR, `mobile-requirements-full-${MOBILE_WIDTH_TAG}.png`), fullPage: true });
+  const mobileRequirementsMetrics = await metrics(mobile.page, mobile.errors);
   await mobile.page.locator('.mobile-workspace-nav [data-mobile-panel="decision"]').click();
   await mobile.page.waitForTimeout(250);
-  await mobile.page.screenshot({ path: join(OUTPUT_DIR, "mobile-decision-390x844.png"), fullPage: false });
-  const mobileMetrics = await metrics(mobile.page, mobile.errors);
+  await mobile.page.screenshot({ path: join(OUTPUT_DIR, `mobile-decision-${MOBILE_VIEWPORT_TAG}.png`), fullPage: false });
+  await mobile.page.screenshot({ path: join(OUTPUT_DIR, `mobile-decision-full-${MOBILE_WIDTH_TAG}.png`), fullPage: true });
+  const mobileDecisionMetrics = await metrics(mobile.page, mobile.errors);
+  await mobile.page.locator("#stage-proposal").click();
+  await mobile.page.waitForFunction(() => window.__closeoutApp?.getState().pending?.status === "awaiting_human");
+  await mobile.page.waitForTimeout(3900);
+  await mobile.page.screenshot({ path: join(OUTPUT_DIR, `mobile-decision-staged-${MOBILE_VIEWPORT_TAG}.png`), fullPage: false });
+  await mobile.page.screenshot({ path: join(OUTPUT_DIR, `mobile-decision-staged-full-${MOBILE_WIDTH_TAG}.png`), fullPage: true });
+  const mobileStagedMetrics = await metrics(mobile.page, mobile.errors);
   await mobile.context.close();
 
-  process.stdout.write(`${JSON.stringify({ desktop: desktopMetrics, mobile: mobileMetrics }, null, 2)}\n`);
+  process.stdout.write(`${JSON.stringify({
+    desktop: desktopMetrics,
+    mobile: {
+      evidence: mobileEvidenceMetrics,
+      requirements: mobileRequirementsMetrics,
+      decisionSeed: mobileDecisionMetrics,
+      decisionStaged: mobileStagedMetrics,
+    },
+  }, null, 2)}\n`);
 } finally {
   await browser.close();
   await new Promise((resolveClose) => server.close(resolveClose));

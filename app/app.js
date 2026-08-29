@@ -59,8 +59,8 @@
     "evidence-heading", "selected-status", "evidence-kind", "evidence-label", "evidence-verdict", "evidence-viewport",
     "evidence-fallback", "evidence-source", "evidence-captured", "evidence-revision", "evidence-hash", "evidence-count",
     "evidence-tabs", "criterion-text", "required-revision", "current-revision", "scope-lane", "decision-heading",
-    "decision-summary", "recommendation-match", "recommendation-text", "rule-checks", "stage-proposal", "decision-state",
-    "decision-helper", "accept-decision", "reject-decision", "defer-decision", "reopen-decision", "owner-initials",
+    "decision-summary", "recommendation-match", "recommendation-text", "rule-checks", "stage-proposal", "stage-proposal-label", "decision-state",
+    "decision-helper", "accept-decision", "accept-decision-label", "reject-decision", "defer-decision", "reopen-decision", "owner-initials",
     "owner-name", "due-date", "tool-registration", "tool-registration-copy", "audit-count", "drawer-backdrop",
     "handoff-drawer", "audit-drawer", "package-ready-count", "package-exception-count", "package-state",
     "drawer-exception-count", "drawer-ready-count", "exception-package", "accepted-package", "package-footer-copy", "audit-empty",
@@ -83,6 +83,18 @@
     if (className) node.className = className;
     if (text !== undefined && text !== null) node.textContent = String(text);
     return node;
+  }
+
+  function createIcon(name, className = "semantic-icon") {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("focusable", "false");
+    svg.classList.add(...className.split(/\s+/).filter(Boolean));
+    use.setAttribute("href", `#icon-${name}`);
+    svg.append(use);
+    return svg;
   }
 
   function stableStringify(value) {
@@ -182,6 +194,28 @@
     }[status] || "·";
   }
 
+  function statusIcon(status) {
+    return {
+      ready: "tick",
+      unmatched_evidence: "arrow",
+      stale: "alert",
+      scope_review: "review",
+      missing: "minus",
+      owner_review: "person",
+    }[status] || "review";
+  }
+
+  function statusPillLabel(status) {
+    return {
+      ready: "Pass",
+      unmatched_evidence: "Found",
+      stale: "Rev",
+      scope_review: "Review",
+      missing: "Missing",
+      owner_review: "Owner",
+    }[status] || displayStatus(status);
+  }
+
   function renderSummary() {
     const ready = readyRequirements().length;
     const exceptions = state.requirements.length - ready;
@@ -231,9 +265,15 @@
         row.setAttribute("aria-label", `${requirement.label}, ${displayStatus(requirement.status)}, owner ${requirement.owner}`);
         const mark = createElement("span", `status-mark ${requirement.status}`, statusSymbol(requirement.status));
         mark.setAttribute("aria-hidden", "true");
+        mark.append(createIcon(statusIcon(requirement.status)));
         const copy = createElement("span", "requirement-copy");
         copy.append(createElement("strong", "", requirement.label), createElement("small", "", rowMicrocopy(requirement)));
-        row.append(mark, copy, createElement("span", "requirement-owner", requirement.ownerInitials));
+        const tail = createElement("span", "requirement-tail");
+        tail.append(
+          createElement("span", `requirement-state-pill pill-${requirement.status}`, statusPillLabel(requirement.status)),
+          createElement("span", "requirement-owner", requirement.ownerInitials),
+        );
+        row.append(mark, copy, tail);
         row.addEventListener("click", () => selectRequirement(requirement.id));
         refs["requirement-list"].append(row);
       });
@@ -289,10 +329,16 @@
         icon.replaceChildren(createDocumentPreview(requirement, evidence));
       }
       const copy = createElement("span", "");
+      const fileMeta = createElement("span", "evidence-file-meta");
+      fileMeta.append(
+        createElement("span", "evidence-file-kind", evidence.type === "photo" ? "IMG" : evidence.type === "plan" ? "PLN" : "PDF"),
+        createElement("span", "", "1 file"),
+      );
       copy.append(
         createElement("strong", "", evidence.label),
         createElement("small", "", `${evidence.revision} · ${evidence.verdict}`),
-        createElement("em", "", evidence.source)
+        createElement("em", "", evidence.source),
+        fileMeta,
       );
       button.append(step, icon, copy);
       button.addEventListener("click", () => {
@@ -409,7 +455,9 @@
     refs["rule-checks"].replaceChildren();
     labels.forEach((label, index) => {
       const item = createElement("li", checks[index] ? "" : "is-unknown");
-      item.append(createElement("span", "", checks[index] ? "✓" : "·"), document.createTextNode(label));
+      const marker = createElement("span", "", checks[index] ? "✓" : "·");
+      marker.append(createIcon(checks[index] ? "tick" : "minus"));
+      item.append(marker, document.createTextNode(label));
       refs["rule-checks"].append(item);
     });
   }
@@ -490,16 +538,16 @@
     }[requirement.status] || "No safe automated match";
     refs["stage-proposal"].hidden = requirement.status === "ready";
     refs["stage-proposal"].disabled = !canStage;
-    refs["stage-proposal"].textContent = canStage ? mutationPolicy.stageLabel : pending ? "Proposal already staged" : blockedStageCopy;
+    refs["stage-proposal-label"].textContent = canStage ? mutationPolicy.stageLabel : pending ? "Proposal already staged" : blockedStageCopy;
     refs["accept-decision"].disabled = true;
-    refs["accept-decision"].textContent = "Accept evidence";
+    refs["accept-decision-label"].textContent = "Accept evidence";
     refs["reject-decision"].disabled = true;
     refs["defer-decision"].disabled = true;
     refs["reopen-decision"].hidden = true;
 
     if (requirement.status === "ready" && (!pending || pending.status === "consumed")) {
       refs["decision-state"].textContent = "Accepted and applied";
-      refs["accept-decision"].textContent = "Accepted";
+      refs["accept-decision-label"].textContent = "Accepted";
       refs["decision-helper"].textContent = "The accepted evidence is included in the handoff package. Reopen only if the source or criterion changes.";
       refs["recommendation-text"].textContent = pending && pending.status === "consumed"
         ? "This exact evidence match was human-approved and applied once. The accepted proof is now included in the handoff package."
@@ -539,10 +587,10 @@
       refs["defer-decision"].disabled = false;
     }
     if (pending.status === "approved") {
-      refs["accept-decision"].textContent = "Approved";
+      refs["accept-decision-label"].textContent = "Approved";
       refs["approval-boundary"].textContent = "Human approved · agent apply required";
     }
-    if (pending.status === "consumed") refs["accept-decision"].textContent = "Accepted";
+    if (pending.status === "consumed") refs["accept-decision-label"].textContent = "Accepted";
     if (["rejected", "deferred", "consumed"].includes(pending.status)) refs["reopen-decision"].hidden = false;
   }
 

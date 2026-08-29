@@ -11,6 +11,47 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <svg class="icon-sprite" aria-hidden="true" focusable="false">
+    <symbol id="icon-location" viewBox="0 0 24 24">
+      <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/>
+    </symbol>
+    <symbol id="icon-identity" viewBox="0 0 24 24">
+      <rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h5M8 16h8"/>
+    </symbol>
+    <symbol id="icon-revision" viewBox="0 0 24 24">
+      <path d="M20 11a8 8 0 1 0-2.34 5.66M20 4v7h-7"/>
+    </symbol>
+    <symbol id="icon-check" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="9"/><path d="m8 12 2.6 2.6L16.5 9"/>
+    </symbol>
+    <symbol id="icon-tick" viewBox="0 0 24 24">
+      <path d="m6.5 12.5 3.4 3.4L17.8 8"/>
+    </symbol>
+    <symbol id="icon-sparkles" viewBox="0 0 24 24">
+      <path d="M12 3c.7 3.6 2.4 5.3 6 6-3.6.7-5.3 2.4-6 6-.7-3.6-2.4-5.3-6-6 3.6-.7 5.3-2.4 6-6Z"/><path d="M19 15c.3 1.7 1.3 2.7 3 3-1.7.3-2.7 1.3-3 3-.3-1.7-1.3-2.7-3-3 1.7-.3 2.7-1.3 3-3ZM5 2c.2 1.2.8 1.8 2 2-1.2.2-1.8.8-2 2-.2-1.2-.8-1.8-2-2 1.2-.2 1.8-.8 2-2Z"/>
+    </symbol>
+    <symbol id="icon-person" viewBox="0 0 24 24">
+      <circle cx="12" cy="8" r="3.5"/><path d="M5 21a7 7 0 0 1 14 0"/>
+    </symbol>
+    <symbol id="icon-lock" viewBox="0 0 24 24">
+      <rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/>
+    </symbol>
+    <symbol id="icon-arrow" viewBox="0 0 24 24">
+      <path d="M5 12h14M14 7l5 5-5 5"/>
+    </symbol>
+    <symbol id="icon-alert" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 17h.01"/>
+    </symbol>
+    <symbol id="icon-review" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="9"/><path d="M9.8 9a2.3 2.3 0 1 1 3.7 1.8c-1 .7-1.5 1.2-1.5 2.2M12 17h.01"/>
+    </symbol>
+    <symbol id="icon-minus" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="9"/><path d="M8 12h8"/>
+    </symbol>
+    <symbol id="icon-package" viewBox="0 0 24 24">
+      <path d="M6 3h9l3 3v15H6zM15 3v4h4M9 13l2 2 4-4"/>
+    </symbol>
+  </svg>
   <a class="skip-link" href="#evidence-heading">Skip to evidence</a>
   <div class="app-shell">
     <header class="topbar">
@@ -32,7 +73,7 @@
         </button>
         <button class="button button-ink" type="button" data-open-drawer="handoff">
           Preview handoff
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+          <svg class="handoff-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg><svg class="handoff-mobile-icon semantic-icon" aria-hidden="true"><use href="#icon-package"/></svg>
         </button>
       </div>
     </header>
@@ -59,9 +100,16 @@
     </section>
 
     <nav class="mobile-workspace-nav" aria-label="Workspace panels">
-      <button type="button" data-mobile-panel="requirements" aria-pressed="false">Requirements <span id="mobile-exception-count">5</span></button>
-      <button class="is-active" type="button" data-mobile-panel="evidence" aria-pressed="true">Evidence</button>
-      <button type="button" data-mobile-panel="decision" aria-pressed="false">Decision</button>
+      <button type="button" data-mobile-panel="requirements" aria-pressed="false">
+        <span class="mobile-nav-label"><svg class="semantic-icon" aria-hidden="true"><use href="#icon-review"/></svg>Requirements</span>
+        <span class="mobile-nav-count" id="mobile-exception-count">5</span>
+      </button>
+      <button class="is-active" type="button" data-mobile-panel="evidence" aria-pressed="true">
+        <span class="mobile-nav-label"><svg class="semantic-icon" aria-hidden="true"><use href="#icon-check"/></svg>Evidence</span>
+      </button>
+      <button type="button" data-mobile-panel="decision" aria-pressed="false">
+        <span class="mobile-nav-label"><svg class="semantic-icon" aria-hidden="true"><use href="#icon-person"/></svg>Decision</span>
+      </button>
     </nav>
 
     <div class="workspace">
@@ -130,15 +178,15 @@
         <section class="match-strip" aria-labelledby="match-heading">
           <h3 id="match-heading">Why this matches</h3>
           <div class="match-facts">
-            <div><span class="match-marker" aria-hidden="true">LOC</span><span><strong>Location</strong><small id="match-location">Corridor ceiling</small></span></div>
-            <div><span class="match-marker" aria-hidden="true">ID</span><span><strong id="match-identity-label">FD-204</strong><small id="match-identity-copy">Fire damper</small></span></div>
-            <div><span class="match-marker" aria-hidden="true">REV</span><span><strong id="match-revision">Rev 2</strong><small>Current revision</small></span></div>
-            <div><span class="match-marker is-positive" aria-hidden="true">OK</span><span><strong id="match-verdict">Pass</strong><small id="match-verdict-copy">All criteria satisfied</small></span></div>
+            <div><span class="match-marker" aria-hidden="true"><svg class="semantic-icon"><use href="#icon-location"/></svg></span><span><strong>Location</strong><small id="match-location">Corridor ceiling</small></span></div>
+            <div><span class="match-marker" aria-hidden="true"><svg class="semantic-icon"><use href="#icon-identity"/></svg></span><span><strong id="match-identity-label">FD-204</strong><small id="match-identity-copy">Fire damper</small></span></div>
+            <div><span class="match-marker" aria-hidden="true"><svg class="semantic-icon"><use href="#icon-revision"/></svg></span><span><strong id="match-revision">Rev 2</strong><small>Current revision</small></span></div>
+            <div><span class="match-marker is-positive" aria-hidden="true"><svg class="semantic-icon"><use href="#icon-tick"/></svg></span><span><strong id="match-verdict">Pass</strong><small id="match-verdict-copy">All criteria satisfied</small></span></div>
           </div>
         </section>
 
         <div class="evidence-sequence" aria-label="Evidence sequence">
-          <div class="sequence-heading"><span>Evidence chain</span><small id="evidence-count">3 records</small></div>
+          <div class="sequence-heading"><span>Evidence chain</span><span class="sequence-mobile-hint">Swipe to inspect <span aria-hidden="true">→</span></span><small id="evidence-count">3 records</small></div>
           <div class="evidence-chain-grid">
             <div class="evidence-tabs" id="evidence-tabs" role="tablist" aria-label="Evidence chain"></div>
             <section class="criterion-strip" aria-labelledby="criterion-heading">
@@ -151,6 +199,7 @@
                 <div><dt>Required</dt><dd id="required-revision">Rev 2</dd></div>
                 <div><dt>On record</dt><dd id="current-revision">Rev 2</dd></div>
               </dl>
+              <div class="evidence-file-meta criterion-file-meta"><span class="evidence-file-kind">CRIT</span><span>1 item</span></div>
             </section>
           </div>
         </div>
@@ -171,31 +220,32 @@
 
         <section class="agent-recommendation" aria-labelledby="recommendation-heading">
           <div class="recommendation-heading">
-            <span class="agent-glyph" aria-hidden="true">AI</span>
+            <span class="agent-glyph" aria-hidden="true"><svg class="semantic-icon"><use href="#icon-sparkles"/></svg></span>
             <div><p class="eyebrow" id="recommendation-heading">Agent recommendation</p><span id="recommendation-match">Exact rule match</span></div>
           </div>
-          <p id="recommendation-text">Match Rev 2 to FD-204. The location, revision, and passing verdict satisfy the stated criterion.</p>
+          <div class="recommendation-summary"><span class="recommendation-verdict" aria-hidden="true"><svg class="semantic-icon"><use href="#icon-tick"/></svg></span><p id="recommendation-text">Match Rev 2 to FD-204. The location, revision, and passing verdict satisfy the stated criterion.</p></div>
           <ul class="rule-checks" id="rule-checks">
             <li data-check="location"><span aria-hidden="true">✓</span> Location identifies FD-204</li>
             <li data-check="revision"><span aria-hidden="true">✓</span> Current required revision</li>
             <li data-check="verdict"><span aria-hidden="true">✓</span> Functional verdict passes</li>
           </ul>
           <p class="criterion-rule"><span aria-hidden="true"></span> Matches acceptance criterion</p>
-          <button class="button button-blue full-width" type="button" id="stage-proposal">Stage exact match for review</button>
-          <p class="approval-boundary" id="approval-boundary">Approval remains human-only</p>
+          <button class="button button-blue full-width" type="button" id="stage-proposal"><span id="stage-proposal-label">Stage exact match for review</span><svg class="semantic-icon" aria-hidden="true"><use href="#icon-arrow"/></svg></button>
+          <p class="approval-boundary"><svg class="semantic-icon" aria-hidden="true"><use href="#icon-lock"/></svg><span id="approval-boundary">Approval remains human-only</span></p>
         </section>
 
         <section class="human-decision" aria-labelledby="human-decision-heading">
           <div class="section-heading">
-            <div>
-              <p class="eyebrow" id="human-decision-heading">Human decision</p>
+            <div class="human-heading-lockup">
+              <span class="decision-glyph" aria-hidden="true"><svg class="semantic-icon"><use href="#icon-person"/></svg></span>
+              <div><p class="eyebrow" id="human-decision-heading">Human decision</p></div>
             </div>
             <span class="human-only">Human only</span>
           </div>
           <strong id="decision-state" aria-live="polite">No proposal staged</strong>
           <p class="decision-helper" id="decision-helper">Stage the exact evidence match before a person can accept, reject, or defer it.</p>
           <div class="decision-actions">
-            <button class="button button-accept" type="button" id="accept-decision" disabled>Accept evidence</button>
+            <button class="button button-accept" type="button" id="accept-decision" disabled><svg class="semantic-icon" aria-hidden="true"><use href="#icon-lock"/></svg><span id="accept-decision-label">Accept evidence</span></button>
             <button class="button button-secondary" type="button" id="reject-decision" disabled>Request changes</button>
             <button class="button button-secondary" type="button" id="defer-decision" disabled>Defer</button>
           </div>
