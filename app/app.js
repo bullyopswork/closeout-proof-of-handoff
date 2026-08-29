@@ -66,7 +66,7 @@
     "drawer-exception-count", "drawer-ready-count", "exception-package", "accepted-package", "audit-empty",
     "audit-timeline", "dialog-backdrop", "decision-dialog", "dialog-eyebrow", "dialog-heading", "dialog-copy",
     "decision-note", "decision-note-error", "dialog-cancel", "dialog-confirm", "toast-region", "zoom-toggle",
-    "plan-template", "workflow-stage-label", "workflow-stage-copy", "workflow-human-label", "workflow-human-copy",
+    "plan-template", "workflow-stage-label", "workflow-stage-copy", "workflow-human-label", "workflow-human-copy", "approval-boundary",
     "workflow-applied-copy", "match-location", "match-identity-label", "match-identity-copy", "match-revision",
     "match-verdict", "match-verdict-copy"
   ].map((id) => [id, document.getElementById(id)]));
@@ -471,6 +471,7 @@
     refs["decision-summary"].textContent = requirement.summary;
     refs["recommendation-text"].textContent = requirement.recommendation || "This requirement is already supported by accepted evidence. Reopen only if the source record or acceptance basis changes.";
     refs["recommendation-match"].textContent = requirement.status === "ready" ? "Accepted proof" : requirement.status === "missing" ? "Recovery step" : requirement.status === "scope_review" ? "Scope boundary" : "Evidence review";
+    refs["approval-boundary"].textContent = "Approval remains human-only";
     refs["owner-initials"].textContent = requirement.ownerInitials;
     refs["owner-name"].textContent = requirement.owner;
     refs["due-date"].textContent = requirement.due;
@@ -500,6 +501,12 @@
       refs["decision-state"].textContent = "Accepted and applied";
       refs["accept-decision"].textContent = "Accepted";
       refs["decision-helper"].textContent = "The accepted evidence is included in the handoff package. Reopen only if the source or criterion changes.";
+      refs["recommendation-text"].textContent = pending && pending.status === "consumed"
+        ? "This exact evidence match was human-approved and applied once. The accepted proof is now included in the handoff package."
+        : "Accepted proof is already on record for this requirement. Reopen only if the source evidence or criterion changes.";
+      refs["approval-boundary"].textContent = pending && pending.status === "consumed"
+        ? "Human approved · one-time apply consumed"
+        : "Accepted proof on record";
       if (pending && pending.status === "consumed") refs["reopen-decision"].hidden = false;
       return;
     }
@@ -526,11 +533,15 @@
     refs["decision-state"].textContent = stateCopy[0];
     refs["decision-helper"].textContent = stateCopy[1];
     if (pending.status === "awaiting_human") {
+      refs["approval-boundary"].textContent = "Human decision required before apply";
       refs["accept-decision"].disabled = false;
       refs["reject-decision"].disabled = false;
       refs["defer-decision"].disabled = false;
     }
-    if (pending.status === "approved") refs["accept-decision"].textContent = "Approved";
+    if (pending.status === "approved") {
+      refs["accept-decision"].textContent = "Approved";
+      refs["approval-boundary"].textContent = "Human approved · agent apply required";
+    }
     if (pending.status === "consumed") refs["accept-decision"].textContent = "Accepted";
     if (["rejected", "deferred", "consumed"].includes(pending.status)) refs["reopen-decision"].hidden = false;
   }

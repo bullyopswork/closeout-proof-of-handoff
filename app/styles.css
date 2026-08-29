@@ -190,14 +190,21 @@ textarea:focus-visible,
 .button:hover:not(:disabled) { transform: translateY(-1px); }
 .button:active:not(:disabled) { transform: translateY(0); }
 .button:disabled { cursor: not-allowed; opacity: .48; }
+.button[hidden] { display: none !important; }
 .button-quiet { border-color: var(--line); background: transparent; color: var(--ink-soft); }
 .button-quiet:hover { background: var(--paper-warm); }
 .button-ink { background: var(--ink); color: #fff; }
 .button-ink:hover { background: #25333b; }
 .button-blue { background: var(--blueprint); color: #fff; }
 .button-blue:hover { background: var(--blueprint-hover); }
-.button-accept { background: var(--amber); color: #fff; }
-.button-accept:hover { background: var(--amber-strong); }
+.button-accept { background: var(--amber); color: var(--ink); }
+.button-accept:hover:not(:disabled) { background: #d97300; }
+.button-accept:disabled {
+  opacity: 1;
+  border-color: var(--line-strong);
+  background: #edf1f3;
+  color: var(--ink-soft);
+}
 .button-secondary { border-color: var(--line-strong); background: var(--paper-strong); color: var(--ink-soft); }
 .button-secondary:hover { border-color: var(--ink-soft); background: #fff; }
 .button-oxide { background: var(--oxide); color: #fff; }
@@ -1093,6 +1100,14 @@ body { background: #fff; }
 .evidence-tab-icon img { width: 100%; height: 100%; display: block; object-fit: cover; }
 .evidence-tab > span:last-child { min-width: 0; }
 .evidence-tab strong { color: var(--ink); font-size: 10px; }
+.evidence-tab strong {
+  display: -webkit-box;
+  overflow: hidden;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: 1.25;
+}
 .evidence-tab small { margin-top: 5px; color: var(--ink-soft); font-size: 9px; }
 .evidence-tab em { display: block; overflow: hidden; margin-top: 5px; color: var(--muted); font-size: 9px; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -1201,6 +1216,7 @@ body { background: #fff; }
 
 @media (min-width: 1081px) {
   .requirement-group-label[data-overflow-group="true"] { visibility: hidden; }
+  .toast-region { right: 340px; }
 }
 
 @media (max-width: 1280px) and (min-width: 1081px) {
