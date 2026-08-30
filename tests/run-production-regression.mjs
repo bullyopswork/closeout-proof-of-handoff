@@ -72,8 +72,8 @@ function startServer() {
   });
 }
 
-async function newHarness(browser, origin) {
-  const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+async function newHarness(browser, origin, viewport = { width: 1440, height: 1000 }) {
+  const context = await browser.newContext({ viewport });
   const page = await context.newPage();
   const runtimeErrors = [];
   page.on("pageerror", (error) => runtimeErrors.push(`pageerror: ${error.message}`));
@@ -313,6 +313,32 @@ async function testTenSecureFlows(browser, origin) {
 async function testDecisionStatesAndKeyboard(browser, origin) {
   const harness = await newHarness(browser, origin);
   try {
+    assert.equal(await harness.page.locator("#accept-decision").isDisabled(), true);
+    assert.equal(await harness.page.locator("#accept-decision-icon").getAttribute("href"), "#icon-lock");
+    assert.equal(await harness.page.locator("#decision-actions").isVisible(), true);
+    assert.equal(await harness.page.locator("#decision-result").isVisible(), false);
+
+    await harness.page.locator("#stage-proposal").click();
+    await harness.page.waitForFunction(() => document.querySelector("#human-decision-card")?.getAttribute("aria-busy") === "true");
+    assert.equal(await harness.page.locator("#decision-state").textContent(), "Updating decision");
+    await harness.page.waitForFunction(() => window.__closeoutApp.getState().pending?.status === "awaiting_human" && document.querySelector("#human-decision-card")?.getAttribute("aria-busy") === "false");
+    assert.equal(await harness.page.locator("#accept-decision").isEnabled(), true);
+    assert.equal(await harness.page.locator("#accept-decision-icon").getAttribute("href"), "#icon-tick");
+    assert.equal(await harness.page.locator("#stage-status").isVisible(), true);
+    assert.equal(await harness.page.locator("#stage-proposal").isVisible(), false);
+
+    await harness.page.locator("#accept-decision").click();
+    await harness.page.waitForFunction(() => window.__closeoutApp.getState().pending?.status === "approved" && document.querySelector("#human-decision-card")?.getAttribute("aria-busy") === "false");
+    assert.equal(await harness.page.locator("#decision-actions").isVisible(), false);
+    assert.equal(await harness.page.locator("#decision-result").isVisible(), true);
+    assert.equal(await harness.page.locator("#decision-result-title").textContent(), "Approved · awaiting agent apply");
+    assert.equal(await harness.page.locator("#reopen-decision").textContent(), "Withdraw approval");
+    await harness.page.locator("#reopen-decision").click();
+    await harness.page.waitForFunction(() => window.__closeoutApp.getState().pending === null && document.querySelector("#human-decision-card")?.getAttribute("aria-busy") === "false");
+    assert.deepEqual((await callTool(harness.page, "closeout_read_audit_log")).audit.map((event) => event.event), ["proposal_staged", "human_approved", "human_withdrew_approval"]);
+    assert.equal((await callTool(harness.page, "closeout_read_state")).ready, 9);
+    await callTool(harness.page, "closeout_reset_demo");
+
     const staged = await callTool(harness.page, "closeout_stage_change", STAGE_INPUT);
     const token = staged.pending.token;
     await harness.page.locator("#reject-decision").click();
@@ -369,6 +395,43 @@ async function testDecisionStatesAndKeyboard(browser, origin) {
     await assertNoRuntimeErrors(harness);
   } finally {
     await harness.context.close();
+  }
+}
+
+async function testSelectionFocus(browser, origin) {
+  const desktop = await newHarness(browser, origin);
+  try {
+    const requirement = desktop.page.locator('[data-requirement-id="fire-test"]');
+    await requirement.focus();
+    await desktop.page.keyboard.press("Enter");
+    await desktop.page.waitForFunction(() => document.activeElement?.dataset.requirementId === "fire-test");
+    assert.equal(await desktop.page.evaluate(() => document.activeElement?.dataset.requirementId), "fire-test");
+
+    const evidence = desktop.page.locator("#evidence-tab-ev-fire-photo");
+    await evidence.focus();
+    await desktop.page.keyboard.press("Enter");
+    await desktop.page.waitForFunction(() => document.activeElement?.id === "evidence-tab-ev-fire-photo");
+    assert.equal(await desktop.page.evaluate(() => document.activeElement?.id), "evidence-tab-ev-fire-photo");
+    await assertNoRuntimeErrors(desktop);
+  } finally {
+    await desktop.context.close();
+  }
+
+  const mobile = await newHarness(browser, origin, { width: 390, height: 844 });
+  try {
+    await mobile.page.locator('[data-mobile-panel="requirements"]').focus();
+    await mobile.page.keyboard.press("Enter");
+    await mobile.page.waitForFunction(() => document.activeElement?.id === "requirements-heading");
+    assert.equal(await mobile.page.evaluate(() => document.activeElement?.id), "requirements-heading");
+    const requirement = mobile.page.locator('[data-requirement-id="fire-test"]');
+    await requirement.focus();
+    await mobile.page.keyboard.press("Enter");
+    await mobile.page.waitForFunction(() => document.activeElement?.id === "evidence-heading");
+    assert.equal(await mobile.page.evaluate(() => document.activeElement?.id), "evidence-heading");
+    assert.equal(await mobile.page.locator(".app-shell").getAttribute("data-mobile-panel"), "evidence");
+    await assertNoRuntimeErrors(mobile);
+  } finally {
+    await mobile.context.close();
   }
 }
 
@@ -481,6 +544,8 @@ async function main() {
     console.log("PASS ten consecutive secure apply/reset/stale-token flows");
     await testDecisionStatesAndKeyboard(browser, origin);
     console.log("PASS reject/defer/reopen and keyboard behavior");
+    await testSelectionFocus(browser, origin);
+    console.log("PASS desktop/mobile selection focus restoration");
     await testOwnerAcceptanceFlow(browser, origin);
     console.log("PASS owner acceptance apply/reopen flow");
     await testUntrustedInputAndMutationGuards(browser, origin);

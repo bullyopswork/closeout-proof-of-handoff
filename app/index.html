@@ -84,7 +84,7 @@
           <span class="workflow-number" aria-hidden="true">1</span>
           <span><strong>Evidence found</strong><small>Field verification</small></span>
         </li>
-        <li class="workflow-step is-current" data-workflow-step="stage">
+        <li class="workflow-step is-current" data-workflow-step="stage" aria-current="step">
           <span class="workflow-number" aria-hidden="true">2</span>
           <span><strong id="workflow-stage-label">Ready to stage</strong><small id="workflow-stage-copy">Exact match ready</small></span>
         </li>
@@ -94,29 +94,29 @@
         </li>
         <li class="workflow-step" data-workflow-step="applied">
           <span class="workflow-number" aria-hidden="true">4</span>
-          <span><strong>Applied + audited</strong><small id="workflow-applied-copy">Handoff recorded</small></span>
+          <span><strong id="workflow-applied-label">Applied + audited</strong><small id="workflow-applied-copy">Handoff recorded</small></span>
         </li>
       </ol>
     </section>
 
     <nav class="mobile-workspace-nav" aria-label="Workspace panels">
-      <button type="button" data-mobile-panel="requirements" aria-pressed="false">
+      <button type="button" data-mobile-panel="requirements" aria-pressed="false" aria-controls="requirements-panel">
         <span class="mobile-nav-label"><svg class="semantic-icon" aria-hidden="true"><use href="#icon-review"/></svg>Requirements</span>
         <span class="mobile-nav-count" id="mobile-exception-count">5</span>
       </button>
-      <button class="is-active" type="button" data-mobile-panel="evidence" aria-pressed="true">
+      <button class="is-active" type="button" data-mobile-panel="evidence" aria-pressed="true" aria-controls="evidence-panel">
         <span class="mobile-nav-label"><svg class="semantic-icon" aria-hidden="true"><use href="#icon-check"/></svg>Evidence</span>
       </button>
-      <button type="button" data-mobile-panel="decision" aria-pressed="false">
+      <button type="button" data-mobile-panel="decision" aria-pressed="false" aria-controls="decision-panel">
         <span class="mobile-nav-label"><svg class="semantic-icon" aria-hidden="true"><use href="#icon-person"/></svg>Decision</span>
       </button>
     </nav>
 
     <div class="workspace">
-      <aside class="requirements-rail" data-panel="requirements" aria-labelledby="requirements-heading">
+      <aside class="requirements-rail" id="requirements-panel" data-panel="requirements" aria-labelledby="requirements-heading">
         <div class="rail-summary">
           <div>
-            <p class="eyebrow" id="requirements-heading">Issue navigator</p>
+            <p class="eyebrow" id="requirements-heading" tabindex="-1">Issue navigator</p>
             <p class="rail-readiness"><strong id="ready-count">9</strong>/14 ready</p>
           </div>
           <span class="handoff-state" id="handoff-state">Blocked</span>
@@ -134,14 +134,15 @@
         </div>
         <div class="requirement-list" id="requirement-list" role="tabpanel" aria-labelledby="filter-all" tabindex="0" aria-live="polite"></div>
         <p class="filter-empty" id="filter-empty" hidden>No requirements match this view. Choose another filter.</p>
-        <button class="view-all-issues is-active" id="filter-all" type="button" role="tab" aria-selected="true" aria-controls="requirement-list" data-filter="all">View all issues</button>
+        <button class="mobile-toggle-issues" id="mobile-toggle-issues" type="button" aria-controls="requirement-list" aria-expanded="false" hidden>Show all 14 issues</button>
+        <button class="view-all-issues is-active" id="filter-all" type="button" role="tab" aria-selected="true" aria-controls="requirement-list" data-filter="all">All issues</button>
       </aside>
 
-      <main class="evidence-workspace" data-panel="evidence" aria-labelledby="evidence-heading">
+      <main class="evidence-workspace" id="evidence-panel" data-panel="evidence" aria-labelledby="evidence-heading">
         <header class="evidence-heading-row">
           <div>
             <div class="item-trail"><span id="item-position">10 of 14</span><span aria-hidden="true">/</span><span id="item-location">Corridor ceiling · FD-204</span></div>
-            <h2 id="evidence-heading">Fire damper test</h2>
+            <h2 id="evidence-heading" tabindex="-1">Fire damper test</h2>
           </div>
           <span class="status-badge status-unmatched_evidence" id="selected-status">Evidence found</span>
         </header>
@@ -154,7 +155,7 @@
             </div>
             <div class="toolbar-actions">
               <span class="proof-tag" id="evidence-verdict">Pass</span>
-              <button class="icon-button" type="button" id="zoom-toggle" aria-label="Expand evidence">
+              <button class="icon-button" type="button" id="zoom-toggle" aria-label="Expand evidence" aria-controls="evidence-viewport" aria-expanded="false">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M21 16v5h-5M3 16v5h5"/></svg>
               </button>
             </div>
@@ -186,9 +187,9 @@
         </section>
 
         <div class="evidence-sequence" aria-label="Evidence sequence">
-          <div class="sequence-heading"><span>Evidence chain</span><span class="sequence-mobile-hint">Swipe to inspect <span aria-hidden="true">→</span></span><small id="evidence-count">3 records</small></div>
+          <div class="sequence-heading"><span>Evidence chain</span><span class="sequence-mobile-hint">Read top to bottom <span aria-hidden="true">↓</span></span><small id="evidence-count">3 records</small></div>
           <div class="evidence-chain-grid">
-            <div class="evidence-tabs" id="evidence-tabs" role="tablist" aria-label="Evidence chain"></div>
+          <div class="evidence-tabs" id="evidence-tabs" role="tablist" aria-label="Evidence chain" aria-orientation="horizontal"></div>
             <section class="criterion-strip" aria-labelledby="criterion-heading">
               <div class="criterion-number" aria-hidden="true">4</div>
               <div>
@@ -205,16 +206,13 @@
         </div>
       </main>
 
-      <aside class="decision-desk" data-panel="decision" aria-labelledby="decision-heading">
+      <aside class="decision-desk" id="decision-panel" data-panel="decision" aria-labelledby="decision-heading">
         <div class="decision-topline">
           <span class="lane-badge lane-original_scope" id="scope-lane">Original-scope deficiency</span>
-          <button class="icon-button mobile-close-panel" type="button" aria-label="Close decision panel" data-mobile-panel="evidence">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
-          </button>
         </div>
         <div class="decision-title">
-          <p class="eyebrow">Decision desk</p>
-          <h2 id="decision-heading">Fire damper test</h2>
+          <p class="eyebrow">Evidence decision</p>
+          <h2 id="decision-heading" tabindex="-1">Fire damper test</h2>
           <p id="decision-summary">A current passing test exists, but it is not linked to this requirement.</p>
         </div>
 
@@ -231,10 +229,14 @@
           </ul>
           <p class="criterion-rule"><span aria-hidden="true"></span> Matches acceptance criterion</p>
           <button class="button button-blue full-width" type="button" id="stage-proposal"><span id="stage-proposal-label">Stage exact match for review</span><svg class="semantic-icon" aria-hidden="true"><use href="#icon-arrow"/></svg></button>
+          <div class="stage-status" id="stage-status" role="status" hidden>
+            <span class="stage-status-icon" aria-hidden="true"><svg class="semantic-icon"><use id="stage-status-icon" href="#icon-check"/></svg></span>
+            <span><strong id="stage-status-label">Proposal staged</strong><small id="stage-status-copy">Exact evidence is bound for review.</small></span>
+          </div>
           <p class="approval-boundary"><svg class="semantic-icon" aria-hidden="true"><use href="#icon-lock"/></svg><span id="approval-boundary">Approval remains human-only</span></p>
         </section>
 
-        <section class="human-decision" aria-labelledby="human-decision-heading">
+        <section class="human-decision" id="human-decision-card" data-state="seed" aria-labelledby="human-decision-heading">
           <div class="section-heading">
             <div class="human-heading-lockup">
               <span class="decision-glyph" aria-hidden="true"><svg class="semantic-icon"><use href="#icon-person"/></svg></span>
@@ -242,13 +244,20 @@
             </div>
             <span class="human-only">Human only</span>
           </div>
-          <strong id="decision-state" aria-live="polite">No proposal staged</strong>
-          <p class="decision-helper" id="decision-helper">Stage the exact evidence match before a person can accept, reject, or defer it.</p>
-          <div class="decision-actions">
-            <button class="button button-accept" type="button" id="accept-decision" disabled><svg class="semantic-icon" aria-hidden="true"><use href="#icon-lock"/></svg><span id="accept-decision-label">Accept evidence</span></button>
+          <div class="decision-copy" id="decision-copy">
+            <strong id="decision-state" aria-live="polite">No proposal staged</strong>
+            <p class="decision-helper" id="decision-helper">Stage the exact evidence match before a person can accept, reject, or defer it.</p>
+          </div>
+          <div class="decision-result" id="decision-result" role="status" hidden>
+            <span class="decision-result-icon" aria-hidden="true"><svg class="semantic-icon"><use id="decision-result-icon" href="#icon-check"/></svg></span>
+            <span><strong id="decision-result-title">Approved · awaiting agent apply</strong><small id="decision-result-copy">The exact approval is recorded and has not changed readiness.</small></span>
+          </div>
+          <div class="decision-actions" id="decision-actions">
+            <button class="button button-accept" type="button" id="accept-decision" disabled><svg class="semantic-icon" aria-hidden="true"><use id="accept-decision-icon" href="#icon-lock"/></svg><span id="accept-decision-label">Accept evidence</span></button>
             <button class="button button-secondary" type="button" id="reject-decision" disabled>Request changes</button>
             <button class="button button-secondary" type="button" id="defer-decision" disabled>Defer</button>
           </div>
+          <p class="decision-inline-error" id="decision-inline-error" role="alert" hidden><svg class="semantic-icon" aria-hidden="true"><use href="#icon-alert"/></svg><span></span></p>
           <button class="text-action" type="button" id="reopen-decision" hidden>Reopen this decision</button>
         </section>
 
@@ -272,7 +281,7 @@
 
   <div class="drawer-backdrop" id="drawer-backdrop" hidden></div>
 
-  <aside class="drawer" id="handoff-drawer" role="dialog" aria-modal="true" aria-labelledby="handoff-heading" aria-hidden="true" inert>
+  <aside class="drawer" id="handoff-drawer" role="dialog" aria-modal="true" aria-labelledby="handoff-heading" aria-describedby="handoff-intro" aria-hidden="true" inert>
     <header class="drawer-header">
       <div><p class="eyebrow">Package preview</p><h2 id="handoff-heading">Unit 204 handoff</h2></div>
       <button class="icon-button" type="button" data-close-drawer aria-label="Close handoff preview"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
@@ -282,7 +291,7 @@
       <div><span id="package-exception-count">5</span><small>exceptions</small></div>
       <strong id="package-state">Not ready to issue</strong>
     </div>
-    <p class="drawer-intro">The package lists accepted proof and keeps every unresolved exception, owner, and date visible. It never converts exceptions into completion.</p>
+    <p class="drawer-intro" id="handoff-intro">The package lists accepted proof and keeps every unresolved exception, owner, and date visible. It never converts exceptions into completion.</p>
     <section>
       <div class="drawer-section-heading"><h3>Unresolved exceptions</h3><span id="drawer-exception-count">5</span></div>
       <div class="exception-package" id="exception-package"></div>
@@ -297,12 +306,12 @@
     </div>
   </aside>
 
-  <aside class="drawer" id="audit-drawer" role="dialog" aria-modal="true" aria-labelledby="audit-heading" aria-hidden="true" inert>
+  <aside class="drawer" id="audit-drawer" role="dialog" aria-modal="true" aria-labelledby="audit-heading" aria-describedby="audit-intro" aria-hidden="true" inert>
     <header class="drawer-header">
       <div><p class="eyebrow">Decision history</p><h2 id="audit-heading">Visible audit</h2></div>
       <button class="icon-button" type="button" data-close-drawer aria-label="Close audit"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
     </header>
-    <p class="drawer-intro">Agent proposals, human decisions, applications, and reopens appear here in the order they occurred.</p>
+    <p class="drawer-intro" id="audit-intro">Agent proposals, human decisions, applications, and reopens appear here in the order they occurred.</p>
     <div class="audit-empty" id="audit-empty">
       <span aria-hidden="true">∅</span>
       <strong>No decisions yet</strong>
@@ -312,7 +321,7 @@
   </aside>
 
   <div class="dialog-backdrop" id="dialog-backdrop" hidden></div>
-  <section class="decision-dialog" id="decision-dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-heading" aria-hidden="true" inert>
+  <section class="decision-dialog" id="decision-dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-heading" aria-describedby="dialog-copy decision-note-error" aria-hidden="true" inert>
     <p class="eyebrow" id="dialog-eyebrow">Record exact decision</p>
     <h2 id="dialog-heading">Reject fire damper evidence</h2>
     <p id="dialog-copy">Explain why this evidence does not satisfy the criterion. The item will remain unresolved.</p>

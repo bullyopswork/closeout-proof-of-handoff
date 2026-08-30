@@ -46,8 +46,11 @@
     sequence: 0,
     generation: 1,
     writeLocked: false,
+    decisionBusy: null,
+    decisionError: null,
     audit: [],
     mobilePanel: "evidence",
+    mobileRequirementsExpanded: false,
     activeDrawer: null,
     dialogMode: null,
   };
@@ -55,20 +58,22 @@
   const refs = Object.fromEntries([
     "app-shell", "project-title", "project-subtitle", "last-verified", "ready-count", "handoff-state",
     "readiness-meter-fill", "handoff-target", "exception-count", "filter-exception-count", "filter-ready-count",
-    "mobile-exception-count", "requirement-list", "filter-empty", "item-position", "item-location",
+    "mobile-exception-count", "requirements-heading", "requirement-list", "filter-empty", "item-position", "item-location",
     "evidence-heading", "selected-status", "evidence-kind", "evidence-label", "evidence-verdict", "evidence-viewport",
     "evidence-fallback", "evidence-source", "evidence-captured", "evidence-revision", "evidence-hash", "evidence-count",
     "evidence-tabs", "criterion-text", "required-revision", "current-revision", "scope-lane", "decision-heading",
     "decision-summary", "recommendation-match", "recommendation-text", "rule-checks", "stage-proposal", "stage-proposal-label", "decision-state",
-    "decision-helper", "accept-decision", "accept-decision-label", "reject-decision", "defer-decision", "reopen-decision", "owner-initials",
+    "decision-copy", "decision-helper", "decision-actions", "decision-result", "decision-result-icon", "decision-result-title", "decision-result-copy",
+    "decision-inline-error", "accept-decision", "accept-decision-icon", "accept-decision-label", "reject-decision", "defer-decision", "reopen-decision", "owner-initials",
     "owner-name", "due-date", "tool-registration", "tool-registration-copy", "audit-count", "drawer-backdrop",
     "handoff-drawer", "audit-drawer", "package-ready-count", "package-exception-count", "package-state",
     "drawer-exception-count", "drawer-ready-count", "exception-package", "accepted-package", "package-footer-copy", "audit-empty",
     "audit-timeline", "dialog-backdrop", "decision-dialog", "dialog-eyebrow", "dialog-heading", "dialog-copy",
     "decision-note", "decision-note-error", "dialog-cancel", "dialog-confirm", "toast-region", "zoom-toggle",
     "plan-template", "workflow-stage-label", "workflow-stage-copy", "workflow-human-label", "workflow-human-copy", "approval-boundary",
-    "workflow-applied-copy", "match-location", "match-identity-label", "match-identity-copy", "match-revision",
-    "match-verdict", "match-verdict-copy"
+    "workflow-applied-label", "workflow-applied-copy", "match-location", "match-identity-label", "match-identity-copy", "match-revision",
+    "match-verdict", "match-verdict-copy", "mobile-toggle-issues", "human-decision-card", "stage-status", "stage-status-icon",
+    "stage-status-label", "stage-status-copy"
   ].map((id) => [id, document.getElementById(id)]));
 
   refs["app-shell"] = document.querySelector(".app-shell");
@@ -95,6 +100,10 @@
     use.setAttribute("href", `#icon-${name}`);
     svg.append(use);
     return svg;
+  }
+
+  function setIcon(useElement, name) {
+    useElement.setAttribute("href", `#icon-${name}`);
   }
 
   function stableStringify(value) {
@@ -240,6 +249,7 @@
 
   function renderRequirements() {
     const filter = state.filter;
+    const mobileLayout = window.matchMedia("(max-width: 1080px)").matches;
     const visible = state.requirements.filter((item) => {
       if (filter === "ready") return item.status === "ready";
       if (filter === "exceptions") return item.status !== "ready";
@@ -274,12 +284,15 @@
           createElement("span", "requirement-owner", requirement.ownerInitials),
         );
         row.append(mark, copy, tail);
-        row.addEventListener("click", () => selectRequirement(requirement.id));
+        row.addEventListener("click", () => selectRequirement(requirement.id, true));
         refs["requirement-list"].append(row);
       });
     }
 
-    if (filter === "all") {
+    if (filter === "all" && mobileLayout) {
+      appendGroup("Open exceptions", exceptionItems);
+      appendGroup("Accepted proof", state.mobileRequirementsExpanded ? readyItems : readyItems.slice(0, 2), !state.mobileRequirementsExpanded && readyItems.length > 2);
+    } else if (filter === "all") {
       appendGroup("Needs action", exceptionItems.slice(0, 3), true);
       appendGroup("Ready", readyItems.slice(0, 2), true);
       if (exceptionItems.length > 3 || readyItems.length > 2) refs["requirement-list"].append(createElement("div", "requirement-overflow-spacer"));
@@ -289,11 +302,16 @@
       appendGroup(filter === "exceptions" ? "Needs action" : "Ready", visible);
     }
     refs["filter-empty"].hidden = visible.length !== 0;
+    refs["mobile-toggle-issues"].hidden = !mobileLayout || filter !== "all" || readyItems.length <= 2;
+    refs["mobile-toggle-issues"].textContent = state.mobileRequirementsExpanded ? "Show compact issue view" : `Show all ${state.requirements.length} issues`;
+    refs["mobile-toggle-issues"].setAttribute("aria-expanded", state.mobileRequirementsExpanded ? "true" : "false");
   }
 
   function renderEvidenceTabs(requirement) {
     const list = evidenceFor(requirement);
     refs["evidence-tabs"].replaceChildren();
+    const vertical = window.matchMedia("(max-width: 1080px)").matches;
+    refs["evidence-tabs"].setAttribute("aria-orientation", vertical ? "vertical" : "horizontal");
     refs["evidence-count"].textContent = `${list.length + 1} linked checks`;
     if (!list.length) {
       const empty = createElement("div", "evidence-tab is-empty");
@@ -344,15 +362,17 @@
       button.addEventListener("click", () => {
         state.selectedEvidenceId = evidence.id;
         renderSelected();
+        requestAnimationFrame(() => document.getElementById(`evidence-tab-${evidence.id}`)?.focus({ preventScroll: true }));
       });
       button.addEventListener("keydown", (event) => {
-        if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+        if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
         event.preventDefault();
+        const moveForward = ["ArrowRight", "ArrowDown"].includes(event.key);
         const nextIndex = event.key === "Home"
           ? 0
           : event.key === "End"
             ? list.length - 1
-            : (list.indexOf(evidence) + (event.key === "ArrowRight" ? 1 : -1) + list.length) % list.length;
+            : (list.indexOf(evidence) + (moveForward ? 1 : -1) + list.length) % list.length;
         state.selectedEvidenceId = list[nextIndex].id;
         renderSelected();
         document.getElementById(`evidence-tab-${list[nextIndex].id}`).focus();
@@ -482,38 +502,93 @@
     const requirement = selectedRequirement();
     const pending = state.pending && state.pending.requirementId === requirement.id ? state.pending : null;
     const steps = Object.fromEntries(Array.from(document.querySelectorAll("[data-workflow-step]"), (step) => [step.dataset.workflowStep, step]));
-    Object.values(steps).forEach((step) => step.classList.remove("is-current", "is-complete"));
-    steps.evidence.classList.add("is-complete");
+    ["evidence", "stage", "human", "applied"].forEach((key, index) => {
+      const step = steps[key];
+      step.classList.remove("is-current", "is-complete");
+      step.removeAttribute("aria-current");
+      step.querySelector(".workflow-number").textContent = String(index + 1);
+    });
+    const markCurrent = (step) => {
+      step.classList.add("is-current");
+      step.setAttribute("aria-current", "step");
+    };
+    const markComplete = (step) => {
+      step.classList.add("is-complete");
+      step.querySelector(".workflow-number").textContent = "✓";
+    };
+    markComplete(steps.evidence);
 
     refs["workflow-stage-label"].textContent = pending ? "Agent staged" : requirement.status === "ready" ? "Agent applied" : "Ready to stage";
     refs["workflow-stage-copy"].textContent = pending ? "Exact payload bound" : requirement.status === "ready" ? "Exact match consumed" : mutationPolicyFor(requirement.id) ? "Exact match ready" : "Review recovery path";
-    refs["workflow-human-label"].textContent = pending && pending.status === "approved" ? "Human approved" : pending && pending.status === "consumed" ? "Human approved" : "Human approves";
-    refs["workflow-human-copy"].textContent = pending && pending.status === "awaiting_human" ? "Decision pending" : pending && pending.status === "approved" ? "Agent apply required" : pending && pending.status === "consumed" ? "Decision recorded" : "Required";
+    refs["workflow-human-label"].textContent = pending && ["approved", "consumed"].includes(pending.status)
+      ? "Human approved"
+      : pending && pending.status === "rejected"
+        ? "Changes requested"
+        : pending && pending.status === "deferred"
+          ? "Decision deferred"
+          : "Human approves";
+    refs["workflow-human-copy"].textContent = pending && pending.status === "awaiting_human"
+      ? "Decision pending"
+      : pending && pending.status === "approved"
+        ? "Agent apply required"
+        : pending && pending.status === "consumed"
+          ? "Decision recorded"
+          : pending && pending.status === "rejected"
+            ? "Review again"
+            : pending && pending.status === "deferred"
+              ? "Resume when ready"
+              : "Required";
+    refs["workflow-applied-label"].textContent = pending && pending.status === "approved" ? "Agent applies" : "Applied + audited";
     refs["workflow-applied-copy"].textContent = pending && pending.status === "consumed" ? "Audit recorded" : "Handoff record pending";
 
     if (pending && pending.status === "consumed") {
-      steps.stage.classList.add("is-complete");
-      steps.human.classList.add("is-complete");
-      steps.applied.classList.add("is-complete", "is-current");
+      markComplete(steps.stage);
+      markComplete(steps.human);
+      markComplete(steps.applied);
+      markCurrent(steps.applied);
       return;
     }
     if (pending && pending.status === "approved") {
-      steps.stage.classList.add("is-complete");
-      steps.human.classList.add("is-complete");
-      steps.applied.classList.add("is-current");
+      markComplete(steps.stage);
+      markComplete(steps.human);
+      markCurrent(steps.applied);
       return;
     }
     if (pending && pending.status === "awaiting_human") {
-      steps.stage.classList.add("is-complete");
-      steps.human.classList.add("is-current");
+      markComplete(steps.stage);
+      markCurrent(steps.human);
       return;
     }
-    steps.stage.classList.add("is-current");
+    if (pending && ["rejected", "deferred"].includes(pending.status)) {
+      markComplete(steps.stage);
+      markCurrent(steps.human);
+      return;
+    }
+    markCurrent(steps.stage);
+  }
+
+  function showStageStatus(kind, title, copy, icon) {
+    refs["stage-proposal"].hidden = true;
+    refs["stage-status"].hidden = false;
+    refs["stage-status"].dataset.kind = kind;
+    refs["stage-status-label"].textContent = title;
+    refs["stage-status-copy"].textContent = copy;
+    setIcon(refs["stage-status-icon"], icon);
+  }
+
+  function showDecisionResult(kind, title, copy, icon) {
+    refs["decision-copy"].hidden = true;
+    refs["decision-actions"].hidden = true;
+    refs["decision-result"].hidden = false;
+    refs["decision-result"].dataset.kind = kind;
+    refs["decision-result-title"].textContent = title;
+    refs["decision-result-copy"].textContent = copy;
+    setIcon(refs["decision-result-icon"], icon);
   }
 
   function renderDecision(requirement) {
     const lane = data.lanes[requirement.lane];
-    refs["scope-lane"].textContent = lane.label;
+    refs["scope-lane"].textContent = `Origin · ${lane.label}`;
     refs["scope-lane"].className = `lane-badge lane-${requirement.lane}`;
     refs["decision-heading"].textContent = requirement.label;
     refs["decision-summary"].textContent = requirement.summary;
@@ -526,36 +601,74 @@
     renderRuleChecks(requirement);
 
     const pending = state.pending && state.pending.requirementId === requirement.id ? state.pending : null;
+    const busy = state.decisionBusy && state.decisionBusy.requirementId === requirement.id ? state.decisionBusy : null;
+    const decisionError = state.decisionError && state.decisionError.requirementId === requirement.id ? state.decisionError : null;
+    refs["human-decision-card"].dataset.state = busy ? "loading" : pending?.status || (requirement.status === "ready" ? "accepted" : "seed");
+    refs["human-decision-card"].setAttribute("aria-busy", busy ? "true" : "false");
     const mutationPolicy = mutationPolicyFor(requirement.id);
     const canStage = Boolean(mutationPolicy)
       && requirement.status === mutationPolicy.openStatus
-      && (!state.pending || ["rejected", "deferred", "consumed"].includes(state.pending.status));
+      && !state.pending;
     const blockedStageCopy = {
       owner_review: "Owner inspection required",
       scope_review: "Scope decision required",
       missing: "New evidence required",
       stale: "Current revision required",
     }[requirement.status] || "No safe automated match";
-    refs["stage-proposal"].hidden = requirement.status === "ready";
+    refs["stage-status"].hidden = true;
+    refs["stage-proposal"].hidden = requirement.status === "ready" || Boolean(pending);
     refs["stage-proposal"].disabled = !canStage;
-    refs["stage-proposal-label"].textContent = canStage ? mutationPolicy.stageLabel : pending ? "Proposal already staged" : blockedStageCopy;
+    refs["stage-proposal-label"].textContent = canStage ? mutationPolicy.stageLabel : blockedStageCopy;
+    refs["decision-copy"].hidden = false;
+    refs["decision-result"].hidden = true;
+    refs["decision-actions"].hidden = false;
     refs["accept-decision"].disabled = true;
     refs["accept-decision-label"].textContent = "Accept evidence";
+    setIcon(refs["accept-decision-icon"], "lock");
     refs["reject-decision"].disabled = true;
     refs["defer-decision"].disabled = true;
     refs["reopen-decision"].hidden = true;
+    refs["reopen-decision"].textContent = "Reopen this decision";
+    refs["decision-inline-error"].hidden = !decisionError;
+    refs["decision-inline-error"].querySelector("span").textContent = decisionError ? decisionError.message : "";
+
+    if (pending) {
+      const stageCopy = {
+        awaiting_human: ["review", "Proposal staged", "Exact evidence is bound for a human decision.", "check"],
+        approved: ["approved", "Human approved", "One-time approval is waiting for the agent apply step.", "tick"],
+        rejected: ["rejected", "Changes requested", "The staged proposal remains in the audit and must be reviewed again.", "alert"],
+        deferred: ["deferred", "Decision deferred", "The staged proposal is paused until review resumes.", "review"],
+        consumed: ["applied", "Applied to handoff", "Approved evidence is recorded in the audit trail.", "tick"],
+      }[pending.status];
+      if (stageCopy) showStageStatus(...stageCopy);
+    } else if (requirement.status === "ready") {
+      showStageStatus("applied", "Accepted proof on record", "This evidence is already included in the handoff record.", "tick");
+    }
+
+    if (busy) {
+      refs["decision-state"].textContent = "Updating decision";
+      refs["decision-helper"].textContent = busy.label;
+      refs["stage-proposal"].disabled = true;
+      refs["accept-decision"].disabled = true;
+      refs["reject-decision"].disabled = true;
+      refs["defer-decision"].disabled = true;
+      refs["accept-decision-label"].textContent = "Working…";
+      setIcon(refs["accept-decision-icon"], "revision");
+      return;
+    }
 
     if (requirement.status === "ready" && (!pending || pending.status === "consumed")) {
-      refs["decision-state"].textContent = "Accepted and applied";
-      refs["accept-decision-label"].textContent = "Accepted";
-      refs["decision-helper"].textContent = "The accepted evidence is included in the handoff package. Reopen only if the source or criterion changes.";
+      showDecisionResult("applied", "Accepted and applied", "The accepted evidence is included in the handoff package and recorded in the audit.", "tick");
       refs["recommendation-text"].textContent = pending && pending.status === "consumed"
         ? "This exact evidence match was human-approved and applied once. The accepted proof is now included in the handoff package."
         : "Accepted proof is already on record for this requirement. Reopen only if the source evidence or criterion changes.";
       refs["approval-boundary"].textContent = pending && pending.status === "consumed"
         ? "Human approved · one-time apply consumed"
         : "Accepted proof on record";
-      if (pending && pending.status === "consumed") refs["reopen-decision"].hidden = false;
+      if (pending && pending.status === "consumed") {
+        refs["reopen-decision"].hidden = false;
+        refs["reopen-decision"].textContent = "Reopen decision";
+      }
       return;
     }
 
@@ -583,15 +696,29 @@
     if (pending.status === "awaiting_human") {
       refs["approval-boundary"].textContent = "Human decision required before apply";
       refs["accept-decision"].disabled = false;
+      setIcon(refs["accept-decision-icon"], "tick");
       refs["reject-decision"].disabled = false;
       refs["defer-decision"].disabled = false;
+      return;
     }
     if (pending.status === "approved") {
-      refs["accept-decision-label"].textContent = "Approved";
       refs["approval-boundary"].textContent = "Human approved · agent apply required";
+      showDecisionResult("approved", "Approved · awaiting agent apply", "The exact proposal is approved. Readiness remains 9/14 until the agent consumes this one-time approval.", "tick");
+      refs["reopen-decision"].hidden = false;
+      refs["reopen-decision"].textContent = "Withdraw approval";
+      return;
     }
-    if (pending.status === "consumed") refs["accept-decision-label"].textContent = "Accepted";
-    if (["rejected", "deferred", "consumed"].includes(pending.status)) refs["reopen-decision"].hidden = false;
+    if (pending.status === "rejected") {
+      showDecisionResult("rejected", "Changes requested", pending.note || "The proposal was rejected and readiness did not change.", "alert");
+      refs["reopen-decision"].hidden = false;
+      refs["reopen-decision"].textContent = "Review again";
+      return;
+    }
+    if (pending.status === "deferred") {
+      showDecisionResult("deferred", "Decision deferred", pending.note || "The decision is paused and readiness did not change.", "review");
+      refs["reopen-decision"].hidden = false;
+      refs["reopen-decision"].textContent = "Resume decision";
+    }
   }
 
   function renderSelected() {
@@ -676,6 +803,7 @@
     return {
       proposal_staged: "Proposal staged",
       human_approved: "Human approved exact proposal",
+      human_withdrew_approval: "Human withdrew approval",
       human_rejected: "Human rejected proposal",
       human_deferred: "Human deferred decision",
       approved_change_applied: "Approved change applied",
@@ -721,14 +849,21 @@
     renderAudit();
   }
 
-  function selectRequirement(id) {
+  function selectRequirement(id, restoreKeyboardFocus = false) {
     const requirement = getRequirement(id);
     if (!requirement) return;
+    const mobileLayout = window.matchMedia("(max-width: 1080px)").matches;
     state.selectedRequirementId = id;
     state.selectedEvidenceId = requirement.evidenceIds[0] || null;
+    state.decisionError = null;
     renderRequirements();
     renderSelected();
-    if (window.matchMedia("(max-width: 1080px)").matches) setMobilePanel("evidence");
+    if (mobileLayout) setMobilePanel("evidence");
+    if (!restoreKeyboardFocus) return;
+    requestAnimationFrame(() => {
+      if (mobileLayout) refs["evidence-heading"].focus({ preventScroll: true });
+      else document.querySelector(`[data-requirement-id="${CSS.escape(id)}"]`)?.focus({ preventScroll: true });
+    });
   }
 
   function appendAudit(event) {
@@ -943,8 +1078,9 @@
   async function reopenDecision() {
     if (!acquireWriteLock()) return fail("OPERATION_IN_PROGRESS", "Another state-changing operation is still running.");
     try {
-      if (!state.pending || !["rejected", "deferred", "consumed"].includes(state.pending.status)) return fail("NOT_REOPENABLE", "No resolved decision is available to reopen.");
+      if (!state.pending || !["approved", "rejected", "deferred", "consumed"].includes(state.pending.status)) return fail("NOT_REOPENABLE", "No resolved decision is available to reopen.");
       const prior = deepClone(state.pending);
+      const withdrewApproval = prior.status === "approved";
       const requirement = getRequirement(prior.requirementId);
       const evidence = getEvidence(prior.evidenceId);
       if (prior.status === "consumed" && requirement && evidence) {
@@ -960,7 +1096,7 @@
       const resultingStateFingerprint = projectStateFingerprint();
       const resultingStateDigest = await projectStateDigest();
       appendAudit({
-        event: "human_reopened",
+        event: withdrewApproval ? "human_withdrew_approval" : "human_reopened",
         actor: "Local human reviewer",
         actorId: "local-demo-reviewer",
         actorRole: "Visible local control · identity not authenticated",
@@ -973,7 +1109,9 @@
         approvalDigest: prior.approvalDigest,
         resultingStateFingerprint,
         resultingStateDigest,
-        note: "The prior decision remains in the audit; the requirement is open for a new exact review.",
+        note: withdrewApproval
+          ? "The approval was withdrawn before agent apply. Readiness did not change and the proposal remains in the audit."
+          : "The prior decision remains in the audit; the requirement is open for a new exact review.",
       });
       state.pending = null;
       renderAll();
@@ -996,12 +1134,16 @@
       state.selectedRequirementId = "fire-test";
       state.selectedEvidenceId = "ev-fire-photo";
       state.filter = "all";
+      state.mobileRequirementsExpanded = false;
+      state.decisionBusy = null;
+      state.decisionError = null;
       closeDrawer(false);
       closeDecisionDialog(false);
       lastFocus = null;
       setMobilePanel("evidence");
       refs["evidence-viewport"].classList.remove("is-expanded");
       refs["zoom-toggle"].setAttribute("aria-label", "Expand evidence");
+      refs["zoom-toggle"].setAttribute("aria-expanded", "false");
       refs["decision-note"].value = "";
       refs["decision-note"].setAttribute("aria-invalid", "false");
       refs["decision-note-error"].hidden = true;
@@ -1092,6 +1234,24 @@
     }, 3600);
   }
 
+  async function runDecisionAction(label, task) {
+    const requirementId = selectedRequirement().id;
+    state.decisionBusy = { requirementId, label };
+    state.decisionError = null;
+    renderAll();
+    const minimumFeedback = new Promise((resolveDelay) => window.setTimeout(resolveDelay, 320));
+    let result;
+    try {
+      [result] = await Promise.all([task(), minimumFeedback]);
+    } catch (error) {
+      result = fail("ACTION_FAILED", error instanceof Error ? error.message : "The action could not be completed.");
+    }
+    state.decisionBusy = null;
+    if (!result.ok) state.decisionError = { requirementId, message: result.error.message };
+    renderAll();
+    return result;
+  }
+
   let lastFocus = null;
   function openDrawer(name) {
     closeDrawer(false);
@@ -1118,7 +1278,7 @@
     if (returnFocus && lastFocus && typeof lastFocus.focus === "function") lastFocus.focus();
   }
 
-  function setMobilePanel(panel) {
+  function setMobilePanel(panel, focusPanel = false) {
     state.mobilePanel = panel;
     refs["app-shell"].dataset.mobilePanel = panel;
     document.querySelectorAll("[data-mobile-panel]").forEach((button) => {
@@ -1126,6 +1286,9 @@
       button.classList.toggle("is-active", selected);
       if (button.closest(".mobile-workspace-nav")) button.setAttribute("aria-pressed", selected ? "true" : "false");
     });
+    if (!focusPanel) return;
+    const heading = panel === "requirements" ? refs["requirements-heading"] : panel === "decision" ? refs["decision-heading"] : refs["evidence-heading"];
+    requestAnimationFrame(() => heading?.focus({ preventScroll: true }));
   }
 
   function openDecisionDialog(mode) {
@@ -1163,6 +1326,7 @@
   const filterButtons = ["filter-all", "filter-exceptions", "filter-ready"].map((id) => document.getElementById(id));
   function activateFilter(button, moveFocus = false) {
     state.filter = button.dataset.filter;
+    if (state.filter !== "all") state.mobileRequirementsExpanded = false;
     filterButtons.forEach((item) => {
       const selected = item === button;
       item.classList.toggle("is-active", selected);
@@ -1192,7 +1356,14 @@
     });
   });
 
-  document.querySelectorAll("[data-mobile-panel]").forEach((button) => button.addEventListener("click", () => setMobilePanel(button.dataset.mobilePanel)));
+  refs["mobile-toggle-issues"].addEventListener("click", () => {
+    state.mobileRequirementsExpanded = !state.mobileRequirementsExpanded;
+    renderRequirements();
+  });
+
+  document.querySelectorAll("[data-mobile-panel]").forEach((button) => button.addEventListener("click", () => {
+    setMobilePanel(button.dataset.mobilePanel, window.matchMedia("(max-width: 1080px)").matches);
+  }));
   document.querySelectorAll("[data-open-drawer]").forEach((button) => button.addEventListener("click", () => openDrawer(button.dataset.openDrawer)));
   document.querySelectorAll("[data-close-drawer]").forEach((button) => button.addEventListener("click", () => closeDrawer()));
   refs["drawer-backdrop"].addEventListener("click", () => closeDrawer());
@@ -1202,20 +1373,29 @@
   refs["stage-proposal"].addEventListener("click", async () => {
     const requirement = selectedRequirement();
     const mutationPolicy = mutationPolicyFor(requirement.id);
-    const result = mutationPolicy
-      ? await stageProposal({ requirementId: requirement.id, evidenceId: mutationPolicy.evidenceId, reason: mutationPolicy.defaultReason }, "Agent demo control")
-      : fail("EVIDENCE_NOT_ELIGIBLE", "This item does not have a bounded demo mutation.");
+    const result = await runDecisionAction("Binding the exact evidence match for human review…", () => mutationPolicy
+      ? stageProposal({ requirementId: requirement.id, evidenceId: mutationPolicy.evidenceId, reason: mutationPolicy.defaultReason }, "Agent demo control")
+      : Promise.resolve(fail("EVIDENCE_NOT_ELIGIBLE", "This item does not have a bounded demo mutation.")));
     showToast(result.ok ? "Proposal staged" : result.error.code, result.ok ? "Readiness remains unchanged until a person approves and the agent applies." : result.error.message, !result.ok);
   });
   refs["accept-decision"].addEventListener("click", async () => {
-    const result = await recordHumanDecision("approve");
+    const result = await runDecisionAction("Recording the exact human approval…", () => recordHumanDecision("approve"));
     showToast(result.ok ? "Exact proposal approved" : result.error.code, result.ok ? "Approval is recorded; the agent must still apply this exact token." : result.error.message, !result.ok);
   });
   refs["reject-decision"].addEventListener("click", () => openDecisionDialog("reject"));
   refs["defer-decision"].addEventListener("click", () => openDecisionDialog("defer"));
   refs["reopen-decision"].addEventListener("click", async () => {
-    const result = await reopenDecision();
-    showToast(result.ok ? "Decision reopened" : result.error.code, result.ok ? "Prior events remain in the audit; readiness now reflects the open item." : result.error.message, !result.ok);
+    const withdrawingApproval = state.pending?.status === "approved";
+    const result = await runDecisionAction(withdrawingApproval ? "Withdrawing approval before agent apply…" : "Reopening the decision for review…", reopenDecision);
+    showToast(
+      result.ok ? withdrawingApproval ? "Approval withdrawn" : "Decision reopened" : result.error.code,
+      result.ok
+        ? withdrawingApproval
+          ? "Readiness remains unchanged; the prior approval remains visible in the audit."
+          : "Prior events remain in the audit; readiness now reflects the open item."
+        : result.error.message,
+      !result.ok,
+    );
   });
   refs["dialog-confirm"].addEventListener("click", async () => {
     const note = refs["decision-note"].value.trim();
@@ -1226,9 +1406,14 @@
       return;
     }
     refs["decision-note"].setAttribute("aria-invalid", "false");
-    const result = await recordHumanDecision(state.dialogMode, note);
+    const mode = state.dialogMode;
+    const originalLabel = refs["dialog-confirm"].textContent;
+    refs["dialog-confirm"].disabled = true;
+    refs["dialog-confirm"].textContent = "Recording…";
+    const result = await runDecisionAction(mode === "reject" ? "Recording requested changes…" : "Recording the deferred decision…", () => recordHumanDecision(mode, note));
+    refs["dialog-confirm"].disabled = false;
+    refs["dialog-confirm"].textContent = originalLabel;
     if (result.ok) {
-      const mode = state.dialogMode;
       closeDecisionDialog();
       showToast(mode === "reject" ? "Proposal rejected" : "Decision deferred", "Readiness did not change; the exact reason is in the audit.");
     }
@@ -1242,6 +1427,7 @@
   refs["zoom-toggle"].addEventListener("click", () => {
     const expanded = refs["evidence-viewport"].classList.toggle("is-expanded");
     refs["zoom-toggle"].setAttribute("aria-label", expanded ? "Close expanded evidence" : "Expand evidence");
+    refs["zoom-toggle"].setAttribute("aria-expanded", expanded ? "true" : "false");
   });
 
   document.addEventListener("keydown", (event) => {
@@ -1274,6 +1460,7 @@
     else if (refs["evidence-viewport"].classList.contains("is-expanded")) {
       refs["evidence-viewport"].classList.remove("is-expanded");
       refs["zoom-toggle"].setAttribute("aria-label", "Expand evidence");
+      refs["zoom-toggle"].setAttribute("aria-expanded", "false");
       refs["zoom-toggle"].focus();
     }
   });

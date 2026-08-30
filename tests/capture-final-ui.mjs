@@ -93,11 +93,20 @@ async function metrics(page, errors) {
       brokenImages: [...document.images].filter((image) => image.offsetParent !== null && (!image.complete || image.naturalWidth === 0)).length,
       visibleCoreControlsBelow40: [...document.querySelectorAll("button, [role='button'], textarea")].filter((control) => {
         const rect = control.getBoundingClientRect();
-        return control.offsetParent !== null && (rect.width < 40 || rect.height < 40);
+        return control.offsetParent !== null && !control.closest("[inert], [aria-hidden='true']") && (rect.width < 40 || rect.height < 40);
+      }).length,
+      visibleCoreControlsBelow44: [...document.querySelectorAll("button, [role='button'], textarea")].filter((control) => {
+        const rect = control.getBoundingClientRect();
+        return control.offsetParent !== null && !control.closest("[inert], [aria-hidden='true']") && (rect.width < 44 || rect.height < 44);
       }).length,
       controlsBelow40: [...document.querySelectorAll("button, [role='button'], textarea")].flatMap((control) => {
         const rect = control.getBoundingClientRect();
-        if (control.offsetParent === null || (rect.width >= 40 && rect.height >= 40)) return [];
+        if (control.offsetParent === null || control.closest("[inert], [aria-hidden='true']") || (rect.width >= 40 && rect.height >= 40)) return [];
+        return [{ id: control.id || null, label: (control.getAttribute("aria-label") || control.textContent || "").trim().slice(0, 60), width: Math.round(rect.width), height: Math.round(rect.height) }];
+      }),
+      controlsBelow44: [...document.querySelectorAll("button, [role='button'], textarea")].flatMap((control) => {
+        const rect = control.getBoundingClientRect();
+        if (control.offsetParent === null || control.closest("[inert], [aria-hidden='true']") || (rect.width >= 44 && rect.height >= 44)) return [];
         return [{ id: control.id || null, label: (control.getAttribute("aria-label") || control.textContent || "").trim().slice(0, 60), width: Math.round(rect.width), height: Math.round(rect.height) }];
       }),
       viewAllRect: viewAllRect ? { top: Math.round(viewAllRect.top), bottom: Math.round(viewAllRect.bottom), height: Math.round(viewAllRect.height) } : null,
@@ -106,53 +115,176 @@ async function metrics(page, errors) {
   }, errors);
 }
 
+async function prepareScreenshot(page) {
+  await page.evaluate(() => {
+    window.scrollTo(0, 0);
+    document.querySelectorAll(".requirements-rail, .requirement-list, .evidence-workspace, .decision-desk, .evidence-tabs").forEach((region) => {
+      region.scrollTop = 0;
+      region.scrollLeft = 0;
+    });
+    document.querySelectorAll(".toast").forEach((toast) => toast.remove());
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+  });
+  await page.waitForTimeout(120);
+}
+
+async function focusWithKeyboard(page, selector, maxTabs = 80) {
+  await page.evaluate(() => {
+    window.scrollTo(0, 0);
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+  });
+  for (let index = 0; index < maxTabs; index += 1) {
+    await page.keyboard.press("Tab");
+    if (await page.locator(selector).evaluate((target) => document.activeElement === target)) return;
+  }
+  throw new Error(`Keyboard focus did not reach ${selector}`);
+}
+
 const { server, origin } = await startServer();
 const browser = await chromium.launch({ executablePath: CHROME, headless: true });
 mkdirSync(OUTPUT_DIR, { recursive: true });
 
 try {
   const desktop = await newPage(browser, origin, DESKTOP_VIEWPORT);
+  await prepareScreenshot(desktop.page);
   await desktop.page.screenshot({ path: join(OUTPUT_DIR, `desktop-${DESKTOP_VIEWPORT.width}x${DESKTOP_VIEWPORT.height}.png`), fullPage: false });
+  if (await desktop.page.locator("#stage-proposal").isVisible()) {
+    await focusWithKeyboard(desktop.page, "#stage-proposal");
+    await desktop.page.screenshot({ path: join(OUTPUT_DIR, `desktop-keyboard-focus-${DESKTOP_VIEWPORT.width}x${DESKTOP_VIEWPORT.height}.png`), fullPage: false });
+    await prepareScreenshot(desktop.page);
+  }
   const desktopMetrics = await metrics(desktop.page, desktop.errors);
   if (process.env.CLOSEOUT_CAPTURE_STATES === "1") {
+    if (!(await desktop.page.locator("#stage-proposal").isVisible())) {
+      await desktop.page.locator('.mobile-workspace-nav [data-mobile-panel="decision"]').click();
+      await desktop.page.waitForTimeout(250);
+    }
     await desktop.page.locator("#stage-proposal").click();
-    await desktop.page.waitForFunction(() => window.__closeoutApp?.getState().pending?.status === "awaiting_human");
-    await desktop.page.waitForTimeout(3900);
+    await desktop.page.waitForFunction(() => document.querySelector("#human-decision-card")?.getAttribute("aria-busy") === "true");
+    await desktop.page.screenshot({ path: join(OUTPUT_DIR, `desktop-loading-${DESKTOP_VIEWPORT.width}x${DESKTOP_VIEWPORT.height}.png`), fullPage: false });
+    await desktop.page.waitForFunction(() => window.__closeoutApp?.getState().pending?.status === "awaiting_human" && document.querySelector("#human-decision-card")?.getAttribute("aria-busy") === "false");
+    await prepareScreenshot(desktop.page);
     await desktop.page.screenshot({ path: join(OUTPUT_DIR, `desktop-staged-${DESKTOP_VIEWPORT.width}x${DESKTOP_VIEWPORT.height}.png`), fullPage: false });
+    await desktop.page.locator("#reject-decision").click();
+    await desktop.page.locator("#decision-note").fill("too short");
+    await desktop.page.locator("#dialog-confirm").click();
+    await desktop.page.waitForFunction(() => document.querySelector("#decision-note")?.getAttribute("aria-invalid") === "true");
+    await desktop.page.screenshot({ path: join(OUTPUT_DIR, `desktop-validation-error-${DESKTOP_VIEWPORT.width}x${DESKTOP_VIEWPORT.height}.png`), fullPage: false });
+    await desktop.page.locator("#dialog-cancel").click();
     await desktop.page.locator("#accept-decision").click();
-    await desktop.page.waitForFunction(() => window.__closeoutApp?.getState().pending?.status === "approved");
-    await desktop.page.waitForTimeout(3900);
+    await desktop.page.waitForFunction(() => window.__closeoutApp?.getState().pending?.status === "approved" && document.querySelector("#human-decision-card")?.getAttribute("aria-busy") === "false");
+    await prepareScreenshot(desktop.page);
     await desktop.page.screenshot({ path: join(OUTPUT_DIR, `desktop-approved-${DESKTOP_VIEWPORT.width}x${DESKTOP_VIEWPORT.height}.png`), fullPage: false });
     await desktop.page.evaluate(async () => {
       const token = window.__closeoutApp.getState().pending.token;
       await window.__registeredSiteTools.closeout_apply_approved_change.execute({ token });
     });
     await desktop.page.waitForFunction(() => window.__closeoutApp?.getState().pending?.status === "consumed");
-    await desktop.page.waitForTimeout(3900);
+    await prepareScreenshot(desktop.page);
     await desktop.page.screenshot({ path: join(OUTPUT_DIR, `desktop-applied-${DESKTOP_VIEWPORT.width}x${DESKTOP_VIEWPORT.height}.png`), fullPage: false });
+    await desktop.page.evaluate(async () => window.__registeredSiteTools.closeout_reset_demo.execute({}));
+    if (!(await desktop.page.locator("#stage-proposal").isVisible())) {
+      await desktop.page.locator('.mobile-workspace-nav [data-mobile-panel="decision"]').click();
+    }
+    await desktop.page.locator("#stage-proposal").click();
+    await desktop.page.waitForFunction(() => window.__closeoutApp?.getState().pending?.status === "awaiting_human" && document.querySelector("#human-decision-card")?.getAttribute("aria-busy") === "false");
+    await desktop.page.locator("#reject-decision").click();
+    await desktop.page.locator("#decision-note").fill("The evidence does not prove the required functional cycle under load.");
+    await desktop.page.locator("#dialog-confirm").click();
+    await desktop.page.waitForFunction(() => window.__closeoutApp?.getState().pending?.status === "rejected" && document.querySelector("#human-decision-card")?.getAttribute("aria-busy") === "false");
+    await prepareScreenshot(desktop.page);
+    await desktop.page.screenshot({ path: join(OUTPUT_DIR, `desktop-rejected-${DESKTOP_VIEWPORT.width}x${DESKTOP_VIEWPORT.height}.png`), fullPage: false });
+    await desktop.page.locator("#reopen-decision").click();
+    await desktop.page.waitForFunction(() => window.__closeoutApp?.getState().pending === null && document.querySelector("#human-decision-card")?.getAttribute("aria-busy") === "false");
+    await desktop.page.locator("#stage-proposal").click();
+    await desktop.page.waitForFunction(() => window.__closeoutApp?.getState().pending?.status === "awaiting_human" && document.querySelector("#human-decision-card")?.getAttribute("aria-busy") === "false");
+    await desktop.page.locator("#defer-decision").click();
+    await desktop.page.locator("#decision-note").fill("Owner witness is unavailable until the scheduled Monday walkthrough.");
+    await desktop.page.locator("#dialog-confirm").click();
+    await desktop.page.waitForFunction(() => window.__closeoutApp?.getState().pending?.status === "deferred" && document.querySelector("#human-decision-card")?.getAttribute("aria-busy") === "false");
+    await prepareScreenshot(desktop.page);
+    await desktop.page.screenshot({ path: join(OUTPUT_DIR, `desktop-deferred-${DESKTOP_VIEWPORT.width}x${DESKTOP_VIEWPORT.height}.png`), fullPage: false });
   }
   await desktop.context.close();
 
   const mobile = await newPage(browser, origin, MOBILE_VIEWPORT);
+  await prepareScreenshot(mobile.page);
   await mobile.page.screenshot({ path: join(OUTPUT_DIR, `mobile-evidence-${MOBILE_VIEWPORT_TAG}.png`), fullPage: false });
   await mobile.page.screenshot({ path: join(OUTPUT_DIR, `mobile-evidence-full-${MOBILE_WIDTH_TAG}.png`), fullPage: true });
   const mobileEvidenceMetrics = await metrics(mobile.page, mobile.errors);
   await mobile.page.locator('.mobile-workspace-nav [data-mobile-panel="requirements"]').click();
   await mobile.page.waitForTimeout(250);
+  await prepareScreenshot(mobile.page);
   await mobile.page.screenshot({ path: join(OUTPUT_DIR, `mobile-requirements-${MOBILE_VIEWPORT_TAG}.png`), fullPage: false });
   await mobile.page.screenshot({ path: join(OUTPUT_DIR, `mobile-requirements-full-${MOBILE_WIDTH_TAG}.png`), fullPage: true });
   const mobileRequirementsMetrics = await metrics(mobile.page, mobile.errors);
+  const mobileIssuesToggle = mobile.page.locator("#mobile-toggle-issues");
+  if (await mobileIssuesToggle.isVisible()) {
+    await mobileIssuesToggle.click();
+    await mobile.page.waitForTimeout(150);
+    await mobile.page.screenshot({ path: join(OUTPUT_DIR, `mobile-requirements-expanded-full-${MOBILE_WIDTH_TAG}.png`), fullPage: true });
+    await mobileIssuesToggle.click();
+  }
   await mobile.page.locator('.mobile-workspace-nav [data-mobile-panel="decision"]').click();
   await mobile.page.waitForTimeout(250);
+  await prepareScreenshot(mobile.page);
   await mobile.page.screenshot({ path: join(OUTPUT_DIR, `mobile-decision-${MOBILE_VIEWPORT_TAG}.png`), fullPage: false });
   await mobile.page.screenshot({ path: join(OUTPUT_DIR, `mobile-decision-full-${MOBILE_WIDTH_TAG}.png`), fullPage: true });
+  await focusWithKeyboard(mobile.page, "#stage-proposal");
+  await mobile.page.screenshot({ path: join(OUTPUT_DIR, `mobile-decision-keyboard-focus-${MOBILE_VIEWPORT_TAG}.png`), fullPage: false });
+  await prepareScreenshot(mobile.page);
   const mobileDecisionMetrics = await metrics(mobile.page, mobile.errors);
   await mobile.page.locator("#stage-proposal").click();
-  await mobile.page.waitForFunction(() => window.__closeoutApp?.getState().pending?.status === "awaiting_human");
-  await mobile.page.waitForTimeout(3900);
+  await mobile.page.waitForFunction(() => document.querySelector("#human-decision-card")?.getAttribute("aria-busy") === "true");
+  await mobile.page.screenshot({ path: join(OUTPUT_DIR, `mobile-decision-loading-${MOBILE_VIEWPORT_TAG}.png`), fullPage: false });
+  await mobile.page.waitForFunction(() => window.__closeoutApp?.getState().pending?.status === "awaiting_human" && document.querySelector("#human-decision-card")?.getAttribute("aria-busy") === "false");
+  await prepareScreenshot(mobile.page);
   await mobile.page.screenshot({ path: join(OUTPUT_DIR, `mobile-decision-staged-${MOBILE_VIEWPORT_TAG}.png`), fullPage: false });
   await mobile.page.screenshot({ path: join(OUTPUT_DIR, `mobile-decision-staged-full-${MOBILE_WIDTH_TAG}.png`), fullPage: true });
   const mobileStagedMetrics = await metrics(mobile.page, mobile.errors);
+  await mobile.page.locator("#reject-decision").click();
+  await mobile.page.locator("#decision-note").fill("too short");
+  await mobile.page.locator("#dialog-confirm").click();
+  await mobile.page.waitForFunction(() => document.querySelector("#decision-note")?.getAttribute("aria-invalid") === "true");
+  await mobile.page.screenshot({ path: join(OUTPUT_DIR, `mobile-decision-validation-error-${MOBILE_VIEWPORT_TAG}.png`), fullPage: false });
+  await mobile.page.locator("#dialog-cancel").click();
+  await mobile.page.locator("#accept-decision").click();
+  await mobile.page.waitForFunction(() => window.__closeoutApp?.getState().pending?.status === "approved" && document.querySelector("#human-decision-card")?.getAttribute("aria-busy") === "false");
+  await prepareScreenshot(mobile.page);
+  await mobile.page.screenshot({ path: join(OUTPUT_DIR, `mobile-decision-approved-${MOBILE_VIEWPORT_TAG}.png`), fullPage: false });
+  await mobile.page.screenshot({ path: join(OUTPUT_DIR, `mobile-decision-approved-full-${MOBILE_WIDTH_TAG}.png`), fullPage: true });
+  const mobileApprovedMetrics = await metrics(mobile.page, mobile.errors);
+  await mobile.page.evaluate(async () => {
+    const token = window.__closeoutApp.getState().pending.token;
+    await window.__registeredSiteTools.closeout_apply_approved_change.execute({ token });
+  });
+  await mobile.page.waitForFunction(() => window.__closeoutApp?.getState().pending?.status === "consumed");
+  await prepareScreenshot(mobile.page);
+  await mobile.page.screenshot({ path: join(OUTPUT_DIR, `mobile-decision-applied-${MOBILE_VIEWPORT_TAG}.png`), fullPage: false });
+  await mobile.page.screenshot({ path: join(OUTPUT_DIR, `mobile-decision-applied-full-${MOBILE_WIDTH_TAG}.png`), fullPage: true });
+  const mobileAppliedMetrics = await metrics(mobile.page, mobile.errors);
+  await mobile.page.evaluate(async () => window.__registeredSiteTools.closeout_reset_demo.execute({}));
+  await mobile.page.locator('.mobile-workspace-nav [data-mobile-panel="decision"]').click();
+  await mobile.page.locator("#stage-proposal").click();
+  await mobile.page.waitForFunction(() => window.__closeoutApp?.getState().pending?.status === "awaiting_human" && document.querySelector("#human-decision-card")?.getAttribute("aria-busy") === "false");
+  await mobile.page.locator("#reject-decision").click();
+  await mobile.page.locator("#decision-note").fill("The evidence does not prove the required functional cycle under load.");
+  await mobile.page.locator("#dialog-confirm").click();
+  await mobile.page.waitForFunction(() => window.__closeoutApp?.getState().pending?.status === "rejected" && document.querySelector("#human-decision-card")?.getAttribute("aria-busy") === "false");
+  await prepareScreenshot(mobile.page);
+  await mobile.page.screenshot({ path: join(OUTPUT_DIR, `mobile-decision-rejected-${MOBILE_VIEWPORT_TAG}.png`), fullPage: false });
+  await mobile.page.screenshot({ path: join(OUTPUT_DIR, `mobile-decision-rejected-full-${MOBILE_WIDTH_TAG}.png`), fullPage: true });
+  await mobile.page.locator("#reopen-decision").click();
+  await mobile.page.waitForFunction(() => window.__closeoutApp?.getState().pending === null && document.querySelector("#human-decision-card")?.getAttribute("aria-busy") === "false");
+  await mobile.page.locator("#stage-proposal").click();
+  await mobile.page.waitForFunction(() => window.__closeoutApp?.getState().pending?.status === "awaiting_human" && document.querySelector("#human-decision-card")?.getAttribute("aria-busy") === "false");
+  await mobile.page.locator("#defer-decision").click();
+  await mobile.page.locator("#decision-note").fill("Owner witness is unavailable until the scheduled Monday walkthrough.");
+  await mobile.page.locator("#dialog-confirm").click();
+  await mobile.page.waitForFunction(() => window.__closeoutApp?.getState().pending?.status === "deferred" && document.querySelector("#human-decision-card")?.getAttribute("aria-busy") === "false");
+  await prepareScreenshot(mobile.page);
+  await mobile.page.screenshot({ path: join(OUTPUT_DIR, `mobile-decision-deferred-${MOBILE_VIEWPORT_TAG}.png`), fullPage: false });
+  await mobile.page.screenshot({ path: join(OUTPUT_DIR, `mobile-decision-deferred-full-${MOBILE_WIDTH_TAG}.png`), fullPage: true });
   await mobile.context.close();
 
   process.stdout.write(`${JSON.stringify({
@@ -162,6 +294,8 @@ try {
       requirements: mobileRequirementsMetrics,
       decisionSeed: mobileDecisionMetrics,
       decisionStaged: mobileStagedMetrics,
+      decisionApproved: mobileApprovedMetrics,
+      decisionApplied: mobileAppliedMetrics,
     },
   }, null, 2)}\n`);
 } finally {
