@@ -132,8 +132,9 @@ consecutive complete flows.
 
 The public source repository is
 [`bullyopswork/closeout-proof-of-handoff`](https://github.com/bullyopswork/closeout-proof-of-handoff).
-The final-fidelity demo is verified locally. Its public YouTube upload and the
-challenge submission remain separate approval gates.
+The final 2:34 demo is public and independently verified at
+[`https://youtu.be/juAD0BmmExc`](https://youtu.be/juAD0BmmExc). The final
+Devpost challenge submission remains a separate approval gate.
 
 ## License
 

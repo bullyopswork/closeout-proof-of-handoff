@@ -1,8 +1,8 @@
 # Submission draft — Closeout: Proof of Handoff
 
-Status: deployment, repository, written entry, and the verified 2:34 local
-demo are complete. The public-video field and final Devpost action remain
-locked pending separate approval.
+Status: deployment, repository, written entry, and the verified public 2:34
+demo are complete. The final Devpost action remains locked pending separate
+approval.
 
 ## Project details
 
@@ -11,7 +11,7 @@ locked pending separate approval.
   what is accepted before readiness changes.
 - **Live app:** `https://closeout-proof-of-handoff.vercel.app/`
 - **Public repository:** `https://github.com/bullyopswork/closeout-proof-of-handoff`
-- **Public demo video:** `[PENDING PUBLIC YOUTUBE URL]`
+- **Public demo video:** `https://youtu.be/juAD0BmmExc`
 - **License:** MIT
 
 ## Twenty-second explanation
