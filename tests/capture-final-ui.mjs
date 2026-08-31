@@ -154,6 +154,7 @@ try {
     await prepareScreenshot(desktop.page);
   }
   const desktopMetrics = await metrics(desktop.page, desktop.errors);
+  let desktopNextLaneMetrics = null;
   if (process.env.CLOSEOUT_CAPTURE_STATES === "1") {
     if (!(await desktop.page.locator("#stage-proposal").isVisible())) {
       await desktop.page.locator('.mobile-workspace-nav [data-mobile-panel="decision"]').click();
@@ -182,6 +183,20 @@ try {
     await desktop.page.waitForFunction(() => window.__closeoutApp?.getState().pending?.status === "consumed");
     await prepareScreenshot(desktop.page);
     await desktop.page.screenshot({ path: join(OUTPUT_DIR, `desktop-applied-${DESKTOP_VIEWPORT.width}x${DESKTOP_VIEWPORT.height}.png`), fullPage: false });
+    await desktop.page.locator('[data-requirement-id="paint"]').click();
+    await desktop.page.locator('[data-requirement-id="paint"][aria-current="true"]').waitFor();
+    if (!(await desktop.page.locator("#stage-proposal").isEnabled())) {
+      throw new Error("Consumed proposal did not expose the next eligible desktop lane");
+    }
+    await prepareScreenshot(desktop.page);
+    await desktop.page.screenshot({ path: join(OUTPUT_DIR, `desktop-consumed-next-lane-${DESKTOP_VIEWPORT.width}x${DESKTOP_VIEWPORT.height}.png`), fullPage: false });
+    desktopNextLaneMetrics = await metrics(desktop.page, desktop.errors);
+    await desktop.page.locator("#stage-proposal").click();
+    await desktop.page.waitForFunction(() => window.__closeoutApp?.getState().pending?.requirementId === "paint"
+      && window.__closeoutApp?.getState().pending?.status === "awaiting_human"
+      && document.querySelector("#human-decision-card")?.getAttribute("aria-busy") === "false");
+    await prepareScreenshot(desktop.page);
+    await desktop.page.screenshot({ path: join(OUTPUT_DIR, `desktop-next-lane-staged-${DESKTOP_VIEWPORT.width}x${DESKTOP_VIEWPORT.height}.png`), fullPage: false });
     await desktop.page.evaluate(async () => window.__registeredSiteTools.closeout_reset_demo.execute({}));
     if (!(await desktop.page.locator("#stage-proposal").isVisible())) {
       await desktop.page.locator('.mobile-workspace-nav [data-mobile-panel="decision"]').click();
@@ -263,6 +278,24 @@ try {
   await mobile.page.screenshot({ path: join(OUTPUT_DIR, `mobile-decision-applied-${MOBILE_VIEWPORT_TAG}.png`), fullPage: false });
   await mobile.page.screenshot({ path: join(OUTPUT_DIR, `mobile-decision-applied-full-${MOBILE_WIDTH_TAG}.png`), fullPage: true });
   const mobileAppliedMetrics = await metrics(mobile.page, mobile.errors);
+  await mobile.page.locator('.mobile-workspace-nav [data-mobile-panel="requirements"]').click();
+  await mobile.page.locator('[data-requirement-id="paint"]').click();
+  await mobile.page.waitForFunction(() => document.querySelector('[data-requirement-id="paint"]')?.getAttribute("aria-current") === "true");
+  await mobile.page.locator('.mobile-workspace-nav [data-mobile-panel="decision"]').click();
+  if (!(await mobile.page.locator("#stage-proposal").isEnabled())) {
+    throw new Error("Consumed proposal did not expose the next eligible mobile lane");
+  }
+  await prepareScreenshot(mobile.page);
+  await mobile.page.screenshot({ path: join(OUTPUT_DIR, `mobile-decision-consumed-next-lane-${MOBILE_VIEWPORT_TAG}.png`), fullPage: false });
+  await mobile.page.screenshot({ path: join(OUTPUT_DIR, `mobile-decision-consumed-next-lane-full-${MOBILE_WIDTH_TAG}.png`), fullPage: true });
+  const mobileNextLaneMetrics = await metrics(mobile.page, mobile.errors);
+  await mobile.page.locator("#stage-proposal").click();
+  await mobile.page.waitForFunction(() => window.__closeoutApp?.getState().pending?.requirementId === "paint"
+    && window.__closeoutApp?.getState().pending?.status === "awaiting_human"
+    && document.querySelector("#human-decision-card")?.getAttribute("aria-busy") === "false");
+  await prepareScreenshot(mobile.page);
+  await mobile.page.screenshot({ path: join(OUTPUT_DIR, `mobile-decision-next-lane-staged-${MOBILE_VIEWPORT_TAG}.png`), fullPage: false });
+  await mobile.page.screenshot({ path: join(OUTPUT_DIR, `mobile-decision-next-lane-staged-full-${MOBILE_WIDTH_TAG}.png`), fullPage: true });
   await mobile.page.evaluate(async () => window.__registeredSiteTools.closeout_reset_demo.execute({}));
   await mobile.page.locator('.mobile-workspace-nav [data-mobile-panel="decision"]').click();
   await mobile.page.locator("#stage-proposal").click();
@@ -288,7 +321,10 @@ try {
   await mobile.context.close();
 
   process.stdout.write(`${JSON.stringify({
-    desktop: desktopMetrics,
+    desktop: {
+      seed: desktopMetrics,
+      consumedNextLane: desktopNextLaneMetrics,
+    },
     mobile: {
       evidence: mobileEvidenceMetrics,
       requirements: mobileRequirementsMetrics,
@@ -296,6 +332,7 @@ try {
       decisionStaged: mobileStagedMetrics,
       decisionApproved: mobileApprovedMetrics,
       decisionApplied: mobileAppliedMetrics,
+      consumedNextLane: mobileNextLaneMetrics,
     },
   }, null, 2)}\n`);
 } finally {

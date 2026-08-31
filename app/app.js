@@ -606,9 +606,10 @@
     refs["human-decision-card"].dataset.state = busy ? "loading" : pending?.status || (requirement.status === "ready" ? "accepted" : "seed");
     refs["human-decision-card"].setAttribute("aria-busy", busy ? "true" : "false");
     const mutationPolicy = mutationPolicyFor(requirement.id);
+    const stageSlotAvailable = !state.pending || state.pending.status === "consumed";
     const canStage = Boolean(mutationPolicy)
       && requirement.status === mutationPolicy.openStatus
-      && !state.pending;
+      && stageSlotAvailable;
     const blockedStageCopy = {
       owner_review: "Owner inspection required",
       scope_review: "Scope decision required",
@@ -889,7 +890,8 @@
       const evidence = getEvidence(input && input.evidenceId);
       if (!requirement) return fail("UNKNOWN_REQUIREMENT", "Unknown closeout requirement.");
       if (!evidence) return fail("UNKNOWN_EVIDENCE", "Unknown evidence record.");
-      if (state.pending && !["rejected", "deferred", "consumed"].includes(state.pending.status)) return fail("PROPOSAL_ALREADY_PENDING", "Resolve the visible pending proposal before staging another.");
+      if (state.pending && ["rejected", "deferred"].includes(state.pending.status)) return fail("DECISION_REOPEN_REQUIRED", "Use the visible Reopen action before staging another proposal.");
+      if (state.pending && state.pending.status !== "consumed") return fail("PROPOSAL_ALREADY_PENDING", "Resolve the visible pending proposal before staging another.");
       const mutationPolicy = mutationPolicyFor(requirement.id);
       if (!mutationPolicy || evidence.id !== mutationPolicy.evidenceId || requirement.status !== mutationPolicy.openStatus) {
         return fail("EVIDENCE_NOT_ELIGIBLE", "Only the documented current FD-204 match and Paint Photo 12 owner-review record are eligible for bounded demo mutations.");

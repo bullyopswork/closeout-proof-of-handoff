@@ -310,6 +310,57 @@ async function testTenSecureFlows(browser, origin) {
   }
 }
 
+async function testColdJudgeRehearsal(browser, origin) {
+  const startedAt = Date.now();
+  const harness = await newHarness(browser, origin);
+  try {
+    const definitions = await registrationSnapshot(harness.page);
+    assert.deepEqual(definitions.map((tool) => tool.name), EXPECTED_TOOLS);
+
+    const seed = await callTool(harness.page, "closeout_read_state");
+    assertSeedState(seed, 1);
+    const blockers = await callTool(harness.page, "closeout_identify_blockers");
+    assert.equal(blockers.count, 5);
+
+    const staged = await callTool(harness.page, "closeout_stage_change", STAGE_INPUT);
+    assert.equal(staged.ok, true);
+    assert.equal(staged.pending.status, "awaiting_human");
+    assert.equal((await callTool(harness.page, "closeout_read_state")).ready, 9);
+
+    await harness.page.locator("#accept-decision").click();
+    await harness.page.waitForFunction(() => window.__closeoutApp.getState().pending?.status === "approved");
+    const applied = await callTool(harness.page, "closeout_apply_approved_change", { token: staged.pending.token });
+    assert.equal(applied.ok, true);
+    assert.equal(applied.ready, 10);
+
+    const replay = await callTool(harness.page, "closeout_apply_approved_change", { token: staged.pending.token });
+    assert.equal(replay.ok, false);
+    assert.equal(replay.error.code, "APPROVAL_CONSUMED");
+
+    const handoff = await callTool(harness.page, "closeout_preview_handoff_package");
+    assert.equal(handoff.package.status, "not_ready_to_issue");
+    assert.equal(handoff.package.readyCount, 10);
+    assert.equal(handoff.package.exceptionCount, 4);
+
+    const reset = await callTool(harness.page, "closeout_reset_demo");
+    assert.equal(reset.ok, true);
+    assertSeedState(await callTool(harness.page, "closeout_read_state"), 2);
+    await assertNoRuntimeErrors(harness);
+    return {
+      elapsedMs: Date.now() - startedAt,
+      tools: definitions.length,
+      initialReadiness: "9/14",
+      initialBlockers: blockers.count,
+      finalReadiness: "10/14",
+      finalExceptions: handoff.package.exceptionCount,
+      replayGuard: replay.error.code,
+      handoffStatus: handoff.package.status,
+    };
+  } finally {
+    await harness.context.close();
+  }
+}
+
 async function testDecisionStatesAndKeyboard(browser, origin) {
   const harness = await newHarness(browser, origin);
   try {
@@ -392,6 +443,107 @@ async function testDecisionStatesAndKeyboard(browser, origin) {
     assert.equal(await harness.page.evaluate(() => document.activeElement?.id), "filter-all");
     await harness.page.keyboard.press("ArrowLeft");
     assert.equal(await harness.page.evaluate(() => document.activeElement?.id), "filter-ready");
+    await assertNoRuntimeErrors(harness);
+  } finally {
+    await harness.context.close();
+  }
+}
+
+async function testLifecycleAuthorityBoundaries(browser, origin) {
+  const harness = await newHarness(browser, origin);
+  try {
+    const firstStage = await callTool(harness.page, "closeout_stage_change", STAGE_INPUT);
+    await harness.page.locator("#reject-decision").click();
+    await harness.page.locator("#decision-note").fill("The current photo does not prove the required functional cycle under load.");
+    await harness.page.locator("#dialog-confirm").click();
+    await harness.page.waitForFunction(() => window.__closeoutApp.getState().pending?.status === "rejected");
+    const rejectedState = await callTool(harness.page, "closeout_read_state");
+    const rejectedAudit = await callTool(harness.page, "closeout_read_audit_log");
+
+    const rejectedRestage = await callTool(harness.page, "closeout_stage_change", STAGE_INPUT);
+    assert.equal(rejectedRestage.ok, false);
+    assert.equal(rejectedRestage.error.code, "DECISION_REOPEN_REQUIRED");
+    const afterRejectedRestage = await callTool(harness.page, "closeout_read_state");
+    assert.equal(afterRejectedRestage.pending.status, "rejected");
+    assert.equal(afterRejectedRestage.pending.token, firstStage.pending.token);
+    assert.equal(afterRejectedRestage.ready, 9);
+    assert.equal(afterRejectedRestage.projectStateDigest, rejectedState.projectStateDigest);
+    assert.equal((await callTool(harness.page, "closeout_read_audit_log")).count, rejectedAudit.count);
+
+    await harness.page.locator("#reopen-decision").click();
+    await harness.page.waitForFunction(() => window.__closeoutApp.getState().pending === null);
+    const secondStage = await callTool(harness.page, "closeout_stage_change", STAGE_INPUT);
+    assert.equal(secondStage.ok, true);
+    await harness.page.locator("#defer-decision").click();
+    await harness.page.locator("#decision-note").fill("The owner witness is unavailable until the scheduled Monday walkthrough.");
+    await harness.page.locator("#dialog-confirm").click();
+    await harness.page.waitForFunction(() => window.__closeoutApp.getState().pending?.status === "deferred");
+    const deferredState = await callTool(harness.page, "closeout_read_state");
+    const deferredAudit = await callTool(harness.page, "closeout_read_audit_log");
+
+    const deferredRestage = await callTool(harness.page, "closeout_stage_change", PAINT_STAGE_INPUT);
+    assert.equal(deferredRestage.ok, false);
+    assert.equal(deferredRestage.error.code, "DECISION_REOPEN_REQUIRED");
+    const afterDeferredRestage = await callTool(harness.page, "closeout_read_state");
+    assert.equal(afterDeferredRestage.pending.status, "deferred");
+    assert.equal(afterDeferredRestage.pending.token, secondStage.pending.token);
+    assert.equal(afterDeferredRestage.ready, 9);
+    assert.equal(afterDeferredRestage.projectStateDigest, deferredState.projectStateDigest);
+    assert.equal((await callTool(harness.page, "closeout_read_audit_log")).count, deferredAudit.count);
+
+    await harness.page.locator("#reopen-decision").click();
+    await harness.page.waitForFunction(() => window.__closeoutApp.getState().pending === null);
+    const thirdStage = await callTool(harness.page, "closeout_stage_change", STAGE_INPUT);
+    await harness.page.locator("#accept-decision").click();
+    await harness.page.waitForFunction(() => window.__closeoutApp.getState().pending?.status === "approved");
+    const applied = await callTool(harness.page, "closeout_apply_approved_change", { token: thirdStage.pending.token });
+    assert.equal(applied.ok, true);
+    assert.equal(applied.ready, 10);
+    assert.equal(applied.pending.status, "consumed");
+
+    await harness.page.locator('[data-requirement-id="paint"]').click();
+    assert.equal(await harness.page.locator("#stage-proposal").isVisible(), true);
+    assert.equal(await harness.page.locator("#stage-proposal").isEnabled(), true);
+    await harness.page.locator("#stage-proposal").click();
+    await harness.page.waitForFunction(() => {
+      const pending = window.__closeoutApp.getState().pending;
+      return pending?.requirementId === "paint" && pending.status === "awaiting_human";
+    });
+
+    const nextLaneState = await callTool(harness.page, "closeout_read_state");
+    const fire = nextLaneState.requirements.find((item) => item.id === "fire-test");
+    const paint = nextLaneState.requirements.find((item) => item.id === "paint");
+    assert.equal(nextLaneState.ready, 10);
+    assert.equal(nextLaneState.projectStateDigest, applied.projectStateDigest);
+    assert.equal(fire.status, "ready");
+    assert.equal(fire.acceptance.evidenceId, "ev-fire-photo");
+    assert.equal(fire.evidence.find((item) => item.id === "ev-fire-photo").linked, true);
+    assert.equal(paint.status, "owner_review");
+    assert.equal(paint.acceptance, null);
+    assert.equal(nextLaneState.pending.requirementId, "paint");
+    assert.deepEqual((await callTool(harness.page, "closeout_read_audit_log")).audit.map((event) => event.event), [
+      "proposal_staged",
+      "human_rejected",
+      "human_reopened",
+      "proposal_staged",
+      "human_deferred",
+      "human_reopened",
+      "proposal_staged",
+      "human_approved",
+      "approved_change_applied",
+      "proposal_staged",
+    ]);
+
+    const consumedTokenRetry = await callTool(harness.page, "closeout_apply_approved_change", { token: thirdStage.pending.token });
+    assert.equal(consumedTokenRetry.ok, false);
+    assert.equal(consumedTokenRetry.error.code, "TOKEN_MISMATCH");
+    assert.equal((await callTool(harness.page, "closeout_read_state")).projectStateDigest, applied.projectStateDigest);
+
+    const reset = await callTool(harness.page, "closeout_reset_demo");
+    const staleConsumedToken = await callTool(harness.page, "closeout_apply_approved_change", { token: thirdStage.pending.token });
+    assert.equal(staleConsumedToken.ok, false);
+    assert.equal(staleConsumedToken.error.code, "TOKEN_GENERATION_STALE");
+    assertSeedState(await callTool(harness.page, "closeout_read_state"), reset.generation);
     await assertNoRuntimeErrors(harness);
   } finally {
     await harness.context.close();
@@ -540,10 +692,14 @@ async function main() {
     browser = await chromium.launch({ ...(requestedExecutable ? { executablePath: requestedExecutable } : {}), headless: true });
     await testRegistrationAndReadContracts(browser, origin);
     console.log("PASS registration and read/output contracts");
+    const judgeRehearsal = await testColdJudgeRehearsal(browser, origin);
+    console.log(`PASS cold judge rehearsal ${JSON.stringify(judgeRehearsal)}`);
     await testTenSecureFlows(browser, origin);
     console.log("PASS ten consecutive secure apply/reset/stale-token flows");
     await testDecisionStatesAndKeyboard(browser, origin);
     console.log("PASS reject/defer/reopen and keyboard behavior");
+    await testLifecycleAuthorityBoundaries(browser, origin);
+    console.log("PASS lifecycle authority boundaries and consumed-to-next-lane flow");
     await testSelectionFocus(browser, origin);
     console.log("PASS desktop/mobile selection focus restoration");
     await testOwnerAcceptanceFlow(browser, origin);
