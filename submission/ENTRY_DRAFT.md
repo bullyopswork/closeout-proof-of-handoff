@@ -1,8 +1,8 @@
-# Submission draft — Closeout: Proof of Handoff
+# Submitted entry copy — Closeout: Proof of Handoff
 
-Status: deployment, repository, written entry, and the verified public 2:34
-demo are complete. The final Devpost action remains locked pending separate
-approval.
+Status: deployment, repository, verified public 2:34 demo, and Devpost
+submission are complete and publicly verified. The entry remains editable
+until the challenge deadline.
 
 ## Project details
 
@@ -23,6 +23,29 @@ human accepts, rejects, defers, or reopens an exact staged review before
 readiness changes. The guarded contract supports both the technical FD-204
 evidence match and a separate Paint Photo 12 owner-acceptance review. The other
 exceptions remain explicitly routed for new evidence or a scope decision.
+
+## Who it is for
+
+For general contractors, owner representatives, closeout coordinators, and
+commissioning teams, Closeout catches stale, missing, or mislinked proof while
+keeping scope questions from becoming false completion.
+
+## Judge in 60 seconds
+
+1. Open `https://closeout-proof-of-handoff.vercel.app/` in a supported ChatGPT
+   or Chrome WebMCP testing surface. An ordinary browser intentionally shows
+   preview mode.
+2. Call `closeout_read_state` and `closeout_identify_blockers`: the clean seed
+   is `9/14` with five explicit blockers.
+3. Stage `fire-test` with `ev-fire-photo`; readiness must remain `9/14`.
+4. Use the visible **Accept evidence** control on the page.
+5. Apply the returned token once; readiness moves to `10/14`.
+6. Retry the same token and observe `APPROVAL_CONSUMED`.
+7. Preview the handoff: it remains `not_ready_to_issue` with four named
+   exceptions.
+
+Use `closeout_reset_demo` afterward if you want to restore the clean seed in
+that browser context.
 
 ## Inspiration
 
@@ -65,6 +88,9 @@ verify the visible outcome.
 
 This is not a button-replacement demo. The useful collaboration depends on the
 split between structured agent operations and human judgment:
+
+**Structured blockers → digest-bound proposal → visible human decision →
+exact one-time application → replay rejection → truthful blocked handoff.**
 
 - The agent may inspect, reconcile, explain, and stage.
 - A person alone may accept, reject with a reason, defer, or reopen.

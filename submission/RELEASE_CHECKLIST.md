@@ -1,9 +1,8 @@
 # Release checklist
 
-No external step in this file is authorized merely because the checklist
-exists. The public repository and HTTPS deployment were separately approved
-and are complete. Video upload, registration, and Devpost submission remain
-approval-gated.
+This is the post-submission truth record. The public repository, HTTPS
+deployment, public demo, and Devpost submission were separately approved,
+completed, and verified.
 
 ## Local package
 
@@ -44,8 +43,8 @@ approval-gated.
   The final artifact is
   `Closeout-Proof-of-Handoff-demo-fidelity-v1.mp4` at exactly `2:34.000`; see
   `../artifacts/FINAL_FIDELITY_DEMO_PROOF.md`.
-- [ ] Replace the remaining public-video placeholder in `ENTRY_DRAFT.md`.
-- [ ] Show Ed the exact app, repository, video, and Devpost destinations.
-- [ ] Obtain explicit approval for the final external actions.
-- [ ] Verify the live app, public repo/license, public video, and submitted entry
+- [x] Replace the remaining public-video placeholder in `ENTRY_DRAFT.md`.
+- [x] Show Ed the exact app, repository, video, and Devpost destinations.
+- [x] Obtain explicit approval for the final external actions.
+- [x] Verify the live app, public repo/license, public video, and submitted entry
   from their real destinations before calling the release complete.

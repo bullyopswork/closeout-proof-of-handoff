@@ -5,9 +5,10 @@ reconcile records and stage one of two exact eligible resolutions, while a
 person accepts, rejects, defers, or reopens that staged decision in the visible
 UI.**
 
-This repository is a candidate entry for the OpenAI WebMCP Challenge. It uses
-one synthetic Unit 204 closeout package to demonstrate a narrow human-agent
-workflow on the same live page:
+This repository supports the submitted OpenAI WebMCP Challenge entry at
+[`devpost.com/software/closeout-proof-of-handoff`](https://devpost.com/software/closeout-proof-of-handoff).
+It uses one synthetic Unit 204 closeout package to demonstrate a narrow
+human-agent workflow on the same live page:
 
 1. Read the exact 14-item closeout state and five unresolved exceptions.
 2. Reconcile visual evidence to an explicit criterion and revision.
@@ -18,12 +19,38 @@ workflow on the same live page:
 
 The demo contains no real project, customer, contractor, or owner data.
 
+For general contractors, owner representatives, closeout coordinators, and
+commissioning teams, Closeout catches stale, missing, or mislinked proof while
+keeping scope questions from becoming false completion.
+
+## Judge in 60 seconds
+
+1. Open the [live app](https://closeout-proof-of-handoff.vercel.app/) in a
+   supported ChatGPT or Chrome WebMCP testing surface. An ordinary browser
+   intentionally shows preview mode.
+2. Call `closeout_read_state` and `closeout_identify_blockers`: the clean seed
+   is `9/14` with five explicit blockers.
+3. Stage `requirementId: "fire-test"` with
+   `evidenceId: "ev-fire-photo"`. Readiness must remain `9/14`.
+4. Use the visible **Accept evidence** control on the page. No Site Tool can
+   make that human decision.
+5. Apply the returned approval token once. Readiness moves to `10/14`.
+6. Retry the same token and observe `APPROVAL_CONSUMED`.
+7. Call `closeout_preview_handoff_package`: the result stays
+   `not_ready_to_issue` with four named exceptions.
+
+Use `closeout_reset_demo` afterward if you want to restore the documented
+clean seed in that browser context.
+
 ## Why WebMCP matters here
 
 Ordinary browser automation can click controls, but it does not give the agent
 a trustworthy domain contract for requirements, revisions, evidence links,
 scope lanes, approval state, or audit output. Site Tools expose those exact
 operations while the person continues to inspect the normal construction UI.
+
+**Structured blockers → digest-bound proposal → visible human decision →
+exact one-time application → replay rejection → truthful blocked handoff.**
 
 The page registers ten top-level imperative Site Tools sequentially and awaits
 each registration, following the current [official OpenAI Site Tools
@@ -133,8 +160,9 @@ consecutive complete flows.
 The public source repository is
 [`bullyopswork/closeout-proof-of-handoff`](https://github.com/bullyopswork/closeout-proof-of-handoff).
 The final 2:34 demo is public and independently verified at
-[`https://youtu.be/juAD0BmmExc`](https://youtu.be/juAD0BmmExc). The final
-Devpost challenge submission remains a separate approval gate.
+[`https://youtu.be/juAD0BmmExc`](https://youtu.be/juAD0BmmExc). The Devpost
+challenge entry is submitted and public at
+[`https://devpost.com/software/closeout-proof-of-handoff`](https://devpost.com/software/closeout-proof-of-handoff).
 
 ## License
 
