@@ -5,6 +5,7 @@
   "description": "A WebMCP construction closeout demo where an agent stages one of two eligible evidence reviews and a person makes the visible decision.",
   "type": "module",
   "scripts": {
+    "check": "node --check app/app.js && node --check app/data.js && node --check tests/run-production-regression.mjs && node --check tests/capture-final-ui.mjs",
     "serve": "python3 -m http.server 4173",
     "test": "node tests/run-production-regression.mjs"
   },
