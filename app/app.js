@@ -1017,7 +1017,19 @@
         generation: state.pending.generation,
         payloadDigest: state.pending.payloadDigest,
       });
-      if (recalculatedPayloadDigest !== state.pending.payloadDigest || expectedApprovalDigest !== state.pending.approvalDigest) return fail("APPROVED_PAYLOAD_CHANGED", "The proposal or approval binding changed and must be staged again.");
+      const expectedDecisionDigest = await sha256({
+        decision: "approve",
+        actorId: "local-demo-reviewer",
+        token: state.pending.token,
+        generation: state.pending.generation,
+        payloadDigest: state.pending.payloadDigest,
+        note: "",
+      });
+      if (
+        recalculatedPayloadDigest !== state.pending.payloadDigest
+        || expectedApprovalDigest !== state.pending.approvalDigest
+        || expectedDecisionDigest !== state.pending.decisionDigest
+      ) return fail("APPROVED_PAYLOAD_CHANGED", "The proposal or human-decision binding changed and must be staged again.");
       const requirement = getRequirement(state.pending.requirementId);
       const evidence = getEvidence(state.pending.evidenceId);
       const mutationPolicy = requirement ? mutationPolicyFor(requirement.id) : null;
@@ -1056,6 +1068,7 @@
         payloadDigest: state.pending.payloadDigest,
         payloadSnapshot: deepClone(state.pending.payload),
         approvalDigest: state.pending.approvalDigest,
+        decisionDigest: state.pending.decisionDigest,
         resultingStateFingerprint,
         resultingStateDigest,
         note: "Only the exact approved evidence match was applied once.",

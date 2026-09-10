@@ -550,6 +550,56 @@ async function testLifecycleAuthorityBoundaries(browser, origin) {
   }
 }
 
+async function testDecisionDigestTamperResistance(browser, origin) {
+  const harness = await newHarness(browser, origin);
+  try {
+    const staged = await callTool(harness.page, "closeout_stage_change", STAGE_INPUT);
+    await harness.page.locator("#accept-decision").click();
+    await harness.page.waitForFunction(() => window.__closeoutApp.getState().pending?.status === "approved");
+
+    const before = await callTool(harness.page, "closeout_read_state");
+    const auditBefore = await callTool(harness.page, "closeout_read_audit_log");
+    await harness.page.evaluate(() => {
+      const subtle = globalThis.crypto.subtle;
+      const originalDigest = subtle.digest;
+      Object.defineProperty(subtle, "digest", {
+        configurable: true,
+        value(algorithm, data) {
+          const canonical = new TextDecoder().decode(data);
+          if (canonical.includes('"decision":"approve"') && canonical.includes('"note":""')) {
+            return Promise.resolve(new Uint8Array(32).fill(0xa5).buffer);
+          }
+          return originalDigest.call(subtle, algorithm, data);
+        },
+      });
+      window.__restoreCloseoutDigest = () => {
+        delete subtle.digest;
+        delete window.__restoreCloseoutDigest;
+      };
+    });
+
+    const rejected = await callTool(harness.page, "closeout_apply_approved_change", { token: staged.pending.token });
+    assert.equal(rejected.ok, false);
+    assert.equal(rejected.error.code, "APPROVED_PAYLOAD_CHANGED");
+    const afterRejectedApply = await callTool(harness.page, "closeout_read_state");
+    assert.equal(afterRejectedApply.ready, 9);
+    assert.equal(afterRejectedApply.pending.status, "approved");
+    assert.equal(afterRejectedApply.projectStateDigest, before.projectStateDigest);
+    assert.equal((await callTool(harness.page, "closeout_read_audit_log")).count, auditBefore.count);
+
+    await harness.page.evaluate(() => window.__restoreCloseoutDigest());
+    const applied = await callTool(harness.page, "closeout_apply_approved_change", { token: staged.pending.token });
+    assert.equal(applied.ok, true);
+    assert.equal(applied.ready, 10);
+    assert.equal(applied.pending.status, "consumed");
+    const appliedAudit = await callTool(harness.page, "closeout_read_audit_log");
+    assert.equal(appliedAudit.audit.at(-1).decisionDigest, before.pending.decisionDigest);
+    await assertNoRuntimeErrors(harness);
+  } finally {
+    await harness.context.close();
+  }
+}
+
 async function testSelectionFocus(browser, origin) {
   const desktop = await newHarness(browser, origin);
   try {
@@ -700,6 +750,8 @@ async function main() {
     console.log("PASS reject/defer/reopen and keyboard behavior");
     await testLifecycleAuthorityBoundaries(browser, origin);
     console.log("PASS lifecycle authority boundaries and consumed-to-next-lane flow");
+    await testDecisionDigestTamperResistance(browser, origin);
+    console.log("PASS decision-digest tamper resistance");
     await testSelectionFocus(browser, origin);
     console.log("PASS desktop/mobile selection focus restoration");
     await testOwnerAcceptanceFlow(browser, origin);
