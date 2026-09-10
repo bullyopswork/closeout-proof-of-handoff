@@ -9,7 +9,7 @@ Verified locally on September 10, 2026 before publication.
 - Playwright `1.62.1`
 - Google Chrome `152.0.7977.83`
 
-The public CI workflow uses Node.js 20 and the Chromium version installed by
+The public CI workflow uses Node.js 24 and the Chromium version installed by
 the locked Playwright package.
 
 ## Commands and results
