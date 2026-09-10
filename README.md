@@ -1,9 +1,68 @@
 # Closeout: Proof of Handoff
 
-**An evidence-first WebMCP construction closeout demo where an agent can
-reconcile records and stage one of two exact eligible resolutions, while a
-person accepts, rejects, defers, or reopens that staged decision in the visible
-UI.**
+[![CI](https://github.com/bullyopswork/closeout-proof-of-handoff/actions/workflows/ci.yml/badge.svg)](https://github.com/bullyopswork/closeout-proof-of-handoff/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-0b7285.svg)](LICENSE)
+
+[Live demo](https://closeout-proof-of-handoff.vercel.app/) ·
+[JavaScript](app/app.js) ·
+[HTML](app/index.html) ·
+[CSS](app/styles.css) ·
+[Regression suite](tests/run-production-regression.mjs) ·
+[2:34 walkthrough](https://youtu.be/juAD0BmmExc)
+
+Closeout is a responsive, dependency-light frontend demo for reviewing
+construction evidence without turning an unresolved exception into false
+completion. It uses vanilla JavaScript, semantic HTML, responsive CSS, Web
+Crypto, and Playwright to model a guarded four-step workflow: find evidence,
+stage an exact proposal, require a visible human decision, and apply that
+approved payload once.
+
+![Closeout desktop evidence and decision workspace](docs/images/closeout-desktop-approved.png)
+
+## What this repository demonstrates
+
+- A stateful JavaScript UI built with DOM APIs rather than a frontend framework.
+- Exact transition guards for stage, approve, reject, defer, reopen, apply,
+  replay rejection, and reset.
+- SHA-256 bindings across project state, proposal payload, human decision, and
+  one-time approval.
+- Responsive desktop/mobile layouts with keyboard focus and dialog behavior
+  covered by browser tests.
+- Safe rendering of untrusted, HTML-shaped input through `textContent` and DOM
+  construction rather than HTML injection.
+- A Playwright regression harness that exercises the real production handlers
+  and visible controls.
+
+## Start with the code
+
+- [`app/app.js`](app/app.js) — state machine, rendering, guarded mutations,
+  audit records, focus management, and Site Tool definitions.
+- [`app/index.html`](app/index.html) — semantic application shell and accessible
+  control structure.
+- [`app/styles.css`](app/styles.css) — responsive evidence workspace and mobile
+  panel system.
+- [`tests/run-production-regression.mjs`](tests/run-production-regression.mjs)
+  — complete browser-level regression suite.
+- [`VERIFICATION.md`](VERIFICATION.md) — current local verification environment,
+  commands, and source hashes.
+
+## Browser experience
+
+The ordinary browser experience is an interactive preview of the full UI. The
+ten WebMCP Site Tools register only in a compatible agent browser, so a normal
+browser may show `Preview mode` even though the interface itself is working.
+
+<img src="docs/images/closeout-mobile-approved.png" width="390" alt="Closeout mobile human-decision view">
+
+## Project scope
+
+The project is intentionally a static, synthetic demonstration. It contains no
+real customer or contractor data and has no backend, login, database, payment,
+messaging, analytics, or external network calls. It demonstrates frontend
+workflow, state-integrity, and testing techniques—not a production construction
+system or authenticated approval service.
+
+## Challenge background
 
 This repository supports the submitted OpenAI WebMCP Challenge entry at
 [`devpost.com/software/closeout-proof-of-handoff`](https://devpost.com/software/closeout-proof-of-handoff).
@@ -23,7 +82,7 @@ For general contractors, owner representatives, closeout coordinators, and
 commissioning teams, Closeout catches stale, missing, or mislinked proof while
 keeping scope questions from becoming false completion.
 
-## Judge in 60 seconds
+## Try the complete Site Tools workflow
 
 1. Open the [live app](https://closeout-proof-of-handoff.vercel.app/) in a
    supported ChatGPT or Chrome WebMCP testing surface. An ordinary browser
@@ -92,7 +151,7 @@ documentation](https://learn.chatgpt.com/docs/webmcp).
 
 ## Run locally
 
-Requirements: Python 3 and a current desktop browser.
+Requirements: Node.js 20+, npm, Python 3, and a current desktop browser.
 
 ```text
 npm run serve
@@ -140,8 +199,9 @@ status is recorded separately from the source package.
 - `app/` — production HTML, CSS, data, and Site Tool implementation
 - `assets/evidence/` — original synthetic construction evidence images and
   their provenance/hash note
+- `docs/images/` — public desktop and mobile portfolio screenshots
 - `tests/` — isolated browser regression suite
-- `submission/` — local submission copy and timed demo script
+- `.github/workflows/ci.yml` — public regression workflow
 - `vercel.json` — verified static HTTPS deployment configuration
 
 Internal validation controls, screenshots, and mutable project checkpoints are
@@ -154,8 +214,9 @@ Production discovery and the bounded read → stage → human approve → apply 
 origin in ChatGPT desktop build 7303 with Sources evidence. A fresh live reset
 restored the exact 9/14 seed, advanced the generation, and rejected the stale
 token. An isolated Chrome WebMCP lane independently discovered all ten tools
-and invoked both read tools. The locked local dependency graph passes ten
-consecutive complete flows.
+and invoked both read tools. Current local verification and source hashes are
+recorded in [`VERIFICATION.md`](VERIFICATION.md); GitHub Actions reruns the
+production regression suite for every push and pull request.
 
 The public source repository is
 [`bullyopswork/closeout-proof-of-handoff`](https://github.com/bullyopswork/closeout-proof-of-handoff).
