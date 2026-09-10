@@ -831,6 +831,7 @@
         event.approvalToken,
         event.payloadDigest ? `${event.payloadDigest.slice(0, 23)}…` : null,
         event.approvalDigest ? `${event.approvalDigest.slice(0, 23)}…` : null,
+        event.decisionDigest ? `${event.decisionDigest.slice(0, 23)}…` : null,
         event.resultingStateDigest ? `${event.resultingStateDigest.slice(0, 23)}…` : null,
         event.timestamp ? new Date(event.timestamp).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" }) : null,
       ]
@@ -1122,6 +1123,7 @@
         payloadDigest: prior.payloadDigest,
         payloadSnapshot: deepClone(prior.payload),
         approvalDigest: prior.approvalDigest,
+        decisionDigest: prior.decisionDigest,
         resultingStateFingerprint,
         resultingStateDigest,
         note: withdrewApproval

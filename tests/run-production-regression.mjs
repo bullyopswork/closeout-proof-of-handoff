@@ -472,6 +472,8 @@ async function testLifecycleAuthorityBoundaries(browser, origin) {
 
     await harness.page.locator("#reopen-decision").click();
     await harness.page.waitForFunction(() => window.__closeoutApp.getState().pending === null);
+    const rejectedReopenAudit = await callTool(harness.page, "closeout_read_audit_log");
+    assert.equal(rejectedReopenAudit.audit.at(-1).decisionDigest, rejectedState.pending.decisionDigest);
     const secondStage = await callTool(harness.page, "closeout_stage_change", STAGE_INPUT);
     assert.equal(secondStage.ok, true);
     await harness.page.locator("#defer-decision").click();

@@ -190,9 +190,9 @@ headers, cross-origin frame denial, and origin isolation. `.vercelignore` keeps
 internal proof captures, frozen controls, submission drafts, tests, and
 project-management files out of the deployed site.
 
-This tree adds the frame-denial headers. Canonical header and iframe-refusal
-proof must be repeated after every deployment; the latest verified release
-status is recorded separately from the source package.
+The deployment configuration enforces frame-denial headers. Canonical header
+and iframe-refusal proof must be repeated after every deployment; the latest
+verified release status is recorded separately from the source package.
 
 ## Repository layout
 
