@@ -72,7 +72,7 @@ function startServer() {
   });
 }
 
-async function newHarness(browser, origin, viewport = { width: 1440, height: 1000 }) {
+async function newHarness(browser, origin, viewport = { width: 1440, height: 1000 }, registration = { mode: "success" }) {
   const context = await browser.newContext({ viewport });
   const page = await context.newPage();
   const runtimeErrors = [];
@@ -80,9 +80,10 @@ async function newHarness(browser, origin, viewport = { width: 1440, height: 100
   page.on("console", (message) => {
     if (message.type() === "error") runtimeErrors.push(`console: ${message.text()}`);
   });
-  await page.addInitScript(() => {
+  await page.addInitScript(({ mode, failAfter }) => {
     const registry = Object.create(null);
     Object.defineProperty(window, "__registeredSiteTools", { value: registry, configurable: false });
+    if (mode === "unavailable") return;
     Object.defineProperty(document, "modelContext", {
       configurable: false,
       value: {
@@ -91,13 +92,16 @@ async function newHarness(browser, origin, viewport = { width: 1440, height: 100
             throw new TypeError("Invalid Site Tool definition");
           }
           if (registry[definition.name]) throw new Error(`Duplicate Site Tool: ${definition.name}`);
+          if (mode === "partial" && Object.keys(registry).length === failAfter) {
+            throw new Error("Simulated Site Tools registration failure");
+          }
           registry[definition.name] = definition;
         },
       },
     });
-  });
+  }, registration);
   await page.goto(`${origin}/app/index.html`, { waitUntil: "networkidle" });
-  await page.waitForFunction(() => window.__closeoutApp?.registration === "resolved");
+  await page.waitForFunction(() => window.__closeoutApp?.registration && window.__closeoutApp.registration !== "pending");
   return { context, page, runtimeErrors };
 }
 
@@ -185,6 +189,48 @@ async function testRegistrationAndReadContracts(browser, origin) {
     await assertNoRuntimeErrors(harness);
   } finally {
     await harness.context.close();
+  }
+}
+
+async function testRegistrationUnavailableAndPartial(browser, origin) {
+  const preview = await newHarness(browser, origin, undefined, { mode: "unavailable" });
+  try {
+    const status = await preview.page.locator("#tool-registration").getAttribute("data-state");
+    const copy = await preview.page.locator("#tool-registration-copy").textContent();
+    const app = await preview.page.evaluate(() => ({
+      registration: window.__closeoutApp.registration,
+      registeredTools: window.__closeoutApp.registeredTools,
+      actualToolCount: Object.keys(window.__registeredSiteTools).length,
+    }));
+    assert.equal(status, "preview");
+    assert.equal(copy, "Preview mode · open in ChatGPT to register 10 tools");
+    assert.equal(app.registration, "unavailable");
+    assert.deepEqual(app.registeredTools, []);
+    assert.equal(app.actualToolCount, 0);
+    assert.doesNotMatch(copy, /10 registered/);
+    await assertNoRuntimeErrors(preview);
+  } finally {
+    await preview.context.close();
+  }
+
+  const partial = await newHarness(browser, origin, undefined, { mode: "partial", failAfter: 4 });
+  try {
+    const status = await partial.page.locator("#tool-registration").getAttribute("data-state");
+    const copy = await partial.page.locator("#tool-registration-copy").textContent();
+    const app = await partial.page.evaluate(() => ({
+      registration: window.__closeoutApp.registration,
+      registeredTools: window.__closeoutApp.registeredTools,
+      actualTools: Object.keys(window.__registeredSiteTools),
+    }));
+    assert.equal(status, "partial");
+    assert.equal(copy, "Registration stopped after 4/10 · Simulated Site Tools registration failure");
+    assert.equal(app.registration, "partial");
+    assert.deepEqual(app.registeredTools, EXPECTED_TOOLS.slice(0, 4));
+    assert.deepEqual(app.actualTools, EXPECTED_TOOLS.slice(0, 4));
+    assert.doesNotMatch(copy, /10 registered/);
+    await assertNoRuntimeErrors(partial);
+  } finally {
+    await partial.context.close();
   }
 }
 
@@ -364,6 +410,8 @@ async function testColdJudgeRehearsal(browser, origin) {
 async function testDecisionStatesAndKeyboard(browser, origin) {
   const harness = await newHarness(browser, origin);
   try {
+    assert.equal(await harness.page.locator(".review-guide").isVisible(), false);
+    assert.equal(await harness.page.locator("#decision-walkthrough").isVisible(), false);
     assert.equal(await harness.page.locator("#accept-decision").isDisabled(), true);
     assert.equal(await harness.page.locator("#accept-decision-icon").getAttribute("href"), "#icon-lock");
     assert.equal(await harness.page.locator("#decision-actions").isVisible(), true);
@@ -383,9 +431,14 @@ async function testDecisionStatesAndKeyboard(browser, origin) {
     assert.equal(await harness.page.locator("#decision-actions").isVisible(), false);
     assert.equal(await harness.page.locator("#decision-result").isVisible(), true);
     assert.equal(await harness.page.locator("#decision-result-title").textContent(), "Approved · awaiting agent apply");
+    assert.equal(await harness.page.locator("#decision-walkthrough").isVisible(), true);
+    assert.equal(await harness.page.locator("#decision-walkthrough").getAttribute("href"), "https://youtu.be/juAD0BmmExc");
+    assert.equal(await harness.page.locator("#decision-walkthrough").getAttribute("target"), "_blank");
+    assert.match(await harness.page.locator("#decision-walkthrough").textContent(), /Recorded demo; separate from this page/);
     assert.equal(await harness.page.locator("#reopen-decision").textContent(), "Withdraw approval");
     await harness.page.locator("#reopen-decision").click();
     await harness.page.waitForFunction(() => window.__closeoutApp.getState().pending === null && document.querySelector("#human-decision-card")?.getAttribute("aria-busy") === "false");
+    assert.equal(await harness.page.locator("#decision-walkthrough").isVisible(), false);
     assert.deepEqual((await callTool(harness.page, "closeout_read_audit_log")).audit.map((event) => event.event), ["proposal_staged", "human_approved", "human_withdrew_approval"]);
     assert.equal((await callTool(harness.page, "closeout_read_state")).ready, 9);
     await callTool(harness.page, "closeout_reset_demo");
@@ -446,6 +499,23 @@ async function testDecisionStatesAndKeyboard(browser, origin) {
     await assertNoRuntimeErrors(harness);
   } finally {
     await harness.context.close();
+  }
+
+  const mobile = await newHarness(browser, origin, { width: 390, height: 844 });
+  try {
+    assert.equal(await mobile.page.locator(".review-guide").isVisible(), true);
+    const evidenceBox = await mobile.page.locator("#evidence-viewport").boundingBox();
+    assert.ok(evidenceBox && evidenceBox.height <= 330, `Expected a compact phone evidence preview, received ${evidenceBox?.height}px`);
+    await mobile.page.locator("[data-open-decision]").click();
+    await mobile.page.waitForFunction(() => document.querySelector(".app-shell")?.dataset.mobilePanel === "decision" && document.activeElement?.id === "decision-heading");
+    assert.equal(await mobile.page.locator('.mobile-workspace-nav [data-mobile-panel="decision"]').getAttribute("aria-pressed"), "true");
+    await mobile.page.locator("#stage-proposal").click();
+    await mobile.page.waitForFunction(() => window.__closeoutApp.getState().pending?.status === "awaiting_human" && document.activeElement?.id === "human-decision-heading");
+    const acceptBox = await mobile.page.locator("#accept-decision").boundingBox();
+    assert.ok(acceptBox && acceptBox.y >= 176 && acceptBox.y + acceptBox.height <= 844,
+      `Human decision should be visible after staging, received ${JSON.stringify(acceptBox)}`);
+  } finally {
+    await mobile.context.close();
   }
 }
 
@@ -744,6 +814,8 @@ async function main() {
     browser = await chromium.launch({ ...(requestedExecutable ? { executablePath: requestedExecutable } : {}), headless: true });
     await testRegistrationAndReadContracts(browser, origin);
     console.log("PASS registration and read/output contracts");
+    await testRegistrationUnavailableAndPartial(browser, origin);
+    console.log("PASS unavailable and partial Site Tools registration states");
     const judgeRehearsal = await testColdJudgeRehearsal(browser, origin);
     console.log(`PASS cold judge rehearsal ${JSON.stringify(judgeRehearsal)}`);
     await testTenSecureFlows(browser, origin);

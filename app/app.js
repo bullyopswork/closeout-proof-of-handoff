@@ -63,7 +63,7 @@
     "evidence-fallback", "evidence-source", "evidence-captured", "evidence-revision", "evidence-hash", "evidence-count",
     "evidence-tabs", "criterion-text", "required-revision", "current-revision", "scope-lane", "decision-heading",
     "decision-summary", "recommendation-match", "recommendation-text", "rule-checks", "stage-proposal", "stage-proposal-label", "decision-state",
-    "decision-copy", "decision-helper", "decision-actions", "decision-result", "decision-result-icon", "decision-result-title", "decision-result-copy",
+    "decision-copy", "decision-helper", "decision-actions", "decision-result", "decision-result-icon", "decision-result-title", "decision-result-copy", "decision-walkthrough",
     "decision-inline-error", "accept-decision", "accept-decision-icon", "accept-decision-label", "reject-decision", "defer-decision", "reopen-decision", "owner-initials",
     "owner-name", "due-date", "tool-registration", "tool-registration-copy", "audit-count", "drawer-backdrop",
     "handoff-drawer", "audit-drawer", "package-ready-count", "package-exception-count", "package-state",
@@ -72,7 +72,7 @@
     "decision-note", "decision-note-error", "dialog-cancel", "dialog-confirm", "toast-region", "zoom-toggle",
     "plan-template", "workflow-stage-label", "workflow-stage-copy", "workflow-human-label", "workflow-human-copy", "approval-boundary",
     "workflow-applied-label", "workflow-applied-copy", "match-location", "match-identity-label", "match-identity-copy", "match-revision",
-    "match-verdict", "match-verdict-copy", "mobile-toggle-issues", "human-decision-card", "stage-status", "stage-status-icon",
+    "match-verdict", "match-verdict-copy", "mobile-toggle-issues", "human-decision-card", "human-decision-heading", "stage-status", "stage-status-icon",
     "stage-status-label", "stage-status-copy"
   ].map((id) => [id, document.getElementById(id)]));
 
@@ -622,6 +622,7 @@
     refs["stage-proposal-label"].textContent = canStage ? mutationPolicy.stageLabel : blockedStageCopy;
     refs["decision-copy"].hidden = false;
     refs["decision-result"].hidden = true;
+    refs["decision-walkthrough"].hidden = true;
     refs["decision-actions"].hidden = false;
     refs["accept-decision"].disabled = true;
     refs["accept-decision-label"].textContent = "Accept evidence";
@@ -705,6 +706,7 @@
     if (pending.status === "approved") {
       refs["approval-boundary"].textContent = "Human approved · agent apply required";
       showDecisionResult("approved", "Approved · awaiting agent apply", "The exact proposal is approved. Readiness remains 9/14 until the agent consumes this one-time approval.", "tick");
+      refs["decision-walkthrough"].hidden = false;
       refs["reopen-decision"].hidden = false;
       refs["reopen-decision"].textContent = "Withdraw approval";
       return;
@@ -1381,6 +1383,10 @@
   document.querySelectorAll("[data-mobile-panel]").forEach((button) => button.addEventListener("click", () => {
     setMobilePanel(button.dataset.mobilePanel, window.matchMedia("(max-width: 1080px)").matches);
   }));
+  document.querySelector("[data-open-decision]").addEventListener("click", () => {
+    const mobileLayout = window.matchMedia("(max-width: 1080px)").matches;
+    setMobilePanel("decision", mobileLayout);
+  });
   document.querySelectorAll("[data-open-drawer]").forEach((button) => button.addEventListener("click", () => openDrawer(button.dataset.openDrawer)));
   document.querySelectorAll("[data-close-drawer]").forEach((button) => button.addEventListener("click", () => closeDrawer()));
   refs["drawer-backdrop"].addEventListener("click", () => closeDrawer());
@@ -1394,6 +1400,12 @@
       ? stageProposal({ requirementId: requirement.id, evidenceId: mutationPolicy.evidenceId, reason: mutationPolicy.defaultReason }, "Agent demo control")
       : Promise.resolve(fail("EVIDENCE_NOT_ELIGIBLE", "This item does not have a bounded demo mutation.")));
     showToast(result.ok ? "Proposal staged" : result.error.code, result.ok ? "Readiness remains unchanged until a person approves and the agent applies." : result.error.message, !result.ok);
+    if (result.ok && window.matchMedia("(max-width: 1080px)").matches) {
+      requestAnimationFrame(() => {
+        refs["human-decision-heading"].focus({ preventScroll: true });
+        refs["human-decision-card"].scrollIntoView({ block: "start", behavior: "instant" });
+      });
+    }
   });
   refs["accept-decision"].addEventListener("click", async () => {
     const result = await runDecisionAction("Recording the exact human approval…", () => recordHumanDecision("approve"));

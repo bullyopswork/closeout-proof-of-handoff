@@ -17,7 +17,37 @@ Crypto, and Playwright to model a guarded four-step workflow: find evidence,
 stage an exact proposal, require a visible human decision, and apply that
 approved payload once.
 
+## Quick reviewer path
+
+Closeout addresses a handoff failure: stale or mislinked proof can look
+complete while real exceptions remain open. The [live demo](https://closeout-proof-of-handoff.vercel.app/)
+starts with fictional Unit 204 data at `9/14` ready and five open exceptions.
+
+1. In the selected **Fire damper test**, compare the criterion with the visible
+   evidence for `FD-204`, current Rev 2, and a passing result. Click **Stage
+   exact match for review**; readiness stays `9/14`. The full
+   [Site Tools call sequence](#try-the-complete-site-tools-workflow) gives the
+   equivalent tool inputs.
+2. You make the decision: click **Accept evidence**. In a compatible
+   ChatGPT/Chrome WebMCP surface, read the token with
+   `closeout_pending_approval`, then apply it once with
+   `closeout_apply_approved_change`; readiness becomes `10/14`. Reusing that
+   token returns `APPROVAL_CONSUMED`. In an ordinary browser, use the
+   [2:34 walkthrough](https://youtu.be/juAD0BmmExc) for the Site Tools apply
+   and replay step.
+3. Inspect the [production handlers](app/app.js),
+   [browser regression suite](tests/run-production-regression.mjs), and
+   [verification record](VERIFICATION.md).
+
+**Scope boundary:** this is a static frontend with synthetic data and
+page-local demo state—not a backend, database, authenticated approval service,
+or real construction integration.
+
 ![Closeout desktop evidence and decision workspace](docs/images/closeout-desktop-approved.png)
+
+These screenshots were captured with a local Site Tools registration shim for
+the test walkthrough. The ordinary-browser live page correctly labels itself
+Preview mode; its human approval does not apply the change by itself.
 
 ## What this repository demonstrates
 
@@ -89,8 +119,10 @@ keeping scope questions from becoming false completion.
    intentionally shows preview mode.
 2. Call `closeout_read_state` and `closeout_identify_blockers`: the clean seed
    is `9/14` with five explicit blockers.
-3. Stage `requirementId: "fire-test"` with
-   `evidenceId: "ev-fire-photo"`. Readiness must remain `9/14`.
+3. Call `closeout_stage_change` with `requirementId: "fire-test"`,
+   `evidenceId: "ev-fire-photo"`, and
+   `reason: "Current Rev 2 passing test directly satisfies the FD-204 fire damper requirement."`.
+   Readiness must remain `9/14`.
 4. Use the visible **Accept evidence** control on the page. No Site Tool can
    make that human decision.
 5. Apply the returned approval token once. Readiness moves to `10/14`.

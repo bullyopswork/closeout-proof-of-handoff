@@ -147,6 +147,15 @@
           <span class="status-badge status-unmatched_evidence" id="selected-status">Evidence found</span>
         </header>
 
+        <aside class="review-guide" aria-labelledby="review-guide-heading">
+          <div>
+            <p class="eyebrow">Next step</p>
+            <strong id="review-guide-heading">Review the match, then open Decision.</strong>
+            <p>Inspect the recommendation before staging. Only a person can approve; Site Tools applies only after approval.</p>
+          </div>
+          <button class="button button-secondary" type="button" data-open-decision aria-controls="decision-panel">Open Decision <span aria-hidden="true">→</span></button>
+        </aside>
+
         <section class="evidence-table" aria-label="Selected requirement evidence">
           <div class="evidence-toolbar">
             <div>
@@ -240,7 +249,7 @@
           <div class="section-heading">
             <div class="human-heading-lockup">
               <span class="decision-glyph" aria-hidden="true"><svg class="semantic-icon"><use href="#icon-person"/></svg></span>
-              <div><p class="eyebrow" id="human-decision-heading">Human decision</p></div>
+              <div><p class="eyebrow" id="human-decision-heading" tabindex="-1">Human decision</p></div>
             </div>
             <span class="human-only">Human only</span>
           </div>
@@ -250,7 +259,13 @@
           </div>
           <div class="decision-result" id="decision-result" role="status" hidden>
             <span class="decision-result-icon" aria-hidden="true"><svg class="semantic-icon"><use id="decision-result-icon" href="#icon-check"/></svg></span>
-            <span><strong id="decision-result-title">Approved · awaiting agent apply</strong><small id="decision-result-copy">The exact approval is recorded and has not changed readiness.</small></span>
+            <span><strong id="decision-result-title">Approved · awaiting agent apply</strong><small id="decision-result-copy">The exact approval is recorded and has not changed readiness.</small>
+              <a class="decision-walkthrough" id="decision-walkthrough" href="https://youtu.be/juAD0BmmExc" target="_blank" rel="noopener noreferrer" aria-label="Watch recorded Site Tools apply and replay check (2 minutes 34 seconds, opens in a new tab)" hidden>
+                <span class="walkthrough-play" aria-hidden="true">▶</span>
+                <span><strong>Watch recorded Site Tools apply and replay check</strong><small>2:34 · Recorded demo; separate from this page.</small></span>
+                <span class="walkthrough-open" aria-hidden="true">↗</span>
+              </a>
+            </span>
           </div>
           <div class="decision-actions" id="decision-actions">
             <button class="button button-accept" type="button" id="accept-decision" disabled><svg class="semantic-icon" aria-hidden="true"><use id="accept-decision-icon" href="#icon-lock"/></svg><span id="accept-decision-label">Accept evidence</span></button>
