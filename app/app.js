@@ -1399,32 +1399,27 @@
     const result = await runDecisionAction("Binding the exact evidence match for human review…", () => mutationPolicy
       ? stageProposal({ requirementId: requirement.id, evidenceId: mutationPolicy.evidenceId, reason: mutationPolicy.defaultReason }, "Agent demo control")
       : Promise.resolve(fail("EVIDENCE_NOT_ELIGIBLE", "This item does not have a bounded demo mutation.")));
-    showToast(result.ok ? "Proposal staged" : result.error.code, result.ok ? "Readiness remains unchanged until a person approves and the agent applies." : result.error.message, !result.ok);
-    if (result.ok && window.matchMedia("(max-width: 1080px)").matches) {
+    if (!result.ok) showToast(result.error.code, result.error.message, true);
+    if (result.ok) {
       requestAnimationFrame(() => {
         refs["human-decision-heading"].focus({ preventScroll: true });
-        refs["human-decision-card"].scrollIntoView({ block: "start", behavior: "instant" });
+        if (window.matchMedia("(max-width: 1080px)").matches) {
+          refs["human-decision-card"].scrollIntoView({ block: "start", behavior: "auto" });
+        }
       });
     }
   });
   refs["accept-decision"].addEventListener("click", async () => {
     const result = await runDecisionAction("Recording the exact human approval…", () => recordHumanDecision("approve"));
-    showToast(result.ok ? "Exact proposal approved" : result.error.code, result.ok ? "Approval is recorded; the agent must still apply this exact token." : result.error.message, !result.ok);
+    if (!result.ok) showToast(result.error.code, result.error.message, true);
+    else requestAnimationFrame(() => refs["decision-result"].focus({ preventScroll: true }));
   });
   refs["reject-decision"].addEventListener("click", () => openDecisionDialog("reject"));
   refs["defer-decision"].addEventListener("click", () => openDecisionDialog("defer"));
   refs["reopen-decision"].addEventListener("click", async () => {
     const withdrawingApproval = state.pending?.status === "approved";
     const result = await runDecisionAction(withdrawingApproval ? "Withdrawing approval before agent apply…" : "Reopening the decision for review…", reopenDecision);
-    showToast(
-      result.ok ? withdrawingApproval ? "Approval withdrawn" : "Decision reopened" : result.error.code,
-      result.ok
-        ? withdrawingApproval
-          ? "Readiness remains unchanged; the prior approval remains visible in the audit."
-          : "Prior events remain in the audit; readiness now reflects the open item."
-        : result.error.message,
-      !result.ok,
-    );
+    if (!result.ok) showToast(result.error.code, result.error.message, true);
   });
   refs["dialog-confirm"].addEventListener("click", async () => {
     const note = refs["decision-note"].value.trim();
@@ -1444,7 +1439,6 @@
     refs["dialog-confirm"].textContent = originalLabel;
     if (result.ok) {
       closeDecisionDialog();
-      showToast(mode === "reject" ? "Proposal rejected" : "Decision deferred", "Readiness did not change; the exact reason is in the audit.");
     }
   });
   refs["decision-note"].addEventListener("input", () => {

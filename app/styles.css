@@ -1425,6 +1425,8 @@ body { background: var(--surface-canvas); }
 }
 .decision-glyph .semantic-icon { width: 22px; height: 22px; stroke-width: 2; }
 .human-decision .section-heading .eyebrow { margin: 0; color: var(--amber-strong); font-size: 13px; text-transform: none; letter-spacing: 0; }
+.human-decision .section-heading .eyebrow:focus-visible,
+.decision-result:focus-visible { outline: 2px solid var(--blueprint); outline-offset: 3px; }
 .human-decision .section-heading strong { color: var(--ink); font-size: 12px; }
 .decision-copy > #decision-state { display: block; margin: 0 0 8px; color: var(--ink); font-size: 13px; }
 .human-only { padding: 5px 8px; }

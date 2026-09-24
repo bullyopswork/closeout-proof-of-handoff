@@ -421,13 +421,16 @@ async function testDecisionStatesAndKeyboard(browser, origin) {
     await harness.page.waitForFunction(() => document.querySelector("#human-decision-card")?.getAttribute("aria-busy") === "true");
     assert.equal(await harness.page.locator("#decision-state").textContent(), "Updating decision");
     await harness.page.waitForFunction(() => window.__closeoutApp.getState().pending?.status === "awaiting_human" && document.querySelector("#human-decision-card")?.getAttribute("aria-busy") === "false");
+    await harness.page.waitForFunction(() => document.activeElement?.id === "human-decision-heading");
     assert.equal(await harness.page.locator("#accept-decision").isEnabled(), true);
     assert.equal(await harness.page.locator("#accept-decision-icon").getAttribute("href"), "#icon-tick");
     assert.equal(await harness.page.locator("#stage-status").isVisible(), true);
     assert.equal(await harness.page.locator("#stage-proposal").isVisible(), false);
+    assert.equal(await harness.page.locator(".toast").count(), 0);
 
     await harness.page.locator("#accept-decision").click();
     await harness.page.waitForFunction(() => window.__closeoutApp.getState().pending?.status === "approved" && document.querySelector("#human-decision-card")?.getAttribute("aria-busy") === "false");
+    await harness.page.waitForFunction(() => document.activeElement?.id === "decision-result");
     assert.equal(await harness.page.locator("#decision-actions").isVisible(), false);
     assert.equal(await harness.page.locator("#decision-result").isVisible(), true);
     assert.equal(await harness.page.locator("#decision-result-title").textContent(), "Approved · awaiting agent apply");
@@ -435,6 +438,7 @@ async function testDecisionStatesAndKeyboard(browser, origin) {
     assert.equal(await harness.page.locator("#decision-walkthrough").getAttribute("href"), "https://youtu.be/juAD0BmmExc");
     assert.equal(await harness.page.locator("#decision-walkthrough").getAttribute("target"), "_blank");
     assert.match(await harness.page.locator("#decision-walkthrough").textContent(), /Recorded demo; separate from this page/);
+    assert.equal(await harness.page.locator(".toast").count(), 0);
     assert.equal(await harness.page.locator("#reopen-decision").textContent(), "Withdraw approval");
     await harness.page.locator("#reopen-decision").click();
     await harness.page.waitForFunction(() => window.__closeoutApp.getState().pending === null && document.querySelector("#human-decision-card")?.getAttribute("aria-busy") === "false");
