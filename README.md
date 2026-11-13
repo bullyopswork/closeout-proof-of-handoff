@@ -1,5 +1,19 @@
 # Closeout: Proof of Handoff
 
+## In 30 seconds
+
+**Problem:** stale or mislinked evidence can make unfinished work appear ready for handoff.
+
+**Solution:** a JavaScript evidence review interface that stages an exact proposal, requires a visible human decision and applies that approved change once.
+
+**Try it:** [open the demo](https://closeout-proof-of-handoff.vercel.app/) or [watch the 2:34 walkthrough](https://youtu.be/juAD0BmmExc). Ordinary browsers show Preview mode. Full Site Tools application needs a compatible WebMCP surface.
+
+**Proof:** the [verification record](VERIFICATION.md) and [browser regression suite](tests/run-production-regression.mjs) cover the real production handlers, approval and replay guards, reset, keyboard behavior and responsive layouts.
+
+**Engineering decision:** approval is bound to the page generation, exact payload, evidence and state digests, with a one use token. Staging evidence alone never increases readiness, and unresolved exceptions keep handoff blocked.
+
+**Project work:** interface, transition guards, Site Tools integration and browser checks used AI assistance. This is a static synthetic frontend, not an authenticated approval backend or real construction integration. No unaided authorship claim is made.
+
 [![CI](https://github.com/bullyopswork/closeout-proof-of-handoff/actions/workflows/ci.yml/badge.svg)](https://github.com/bullyopswork/closeout-proof-of-handoff/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-0b7285.svg)](LICENSE)
 
